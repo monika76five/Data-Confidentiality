@@ -8,13 +8,13 @@ Statistical agencies are under legal obligation to protect survey respondents’
 
 1. Download the ```ACSdata.csv``` file in the datasets folder. Read the data dictionary file to explore this dataset.
 
-2. ```SEX = 1, RACE = 1, MAR = 1```
+2. Scenario \#1: ```SEX = 1, RACE = 1, MAR = 1```
 
     1. If you know someone with ```SEX = 1, RACE = 1, MAR = 1``` and this person is in this sample, can you find out which record in the sample belongs to this person? What additional information can you learn about this person?
     
     2. If you know someone with ```SEX = 1, RACE = 1, MAR = 1``` but you are not sure if this person is in this sample, what would you do to find this person? What additional information can you learn about this person?
     
-3. ```SEX = 1, RACE = 1, MAR = 1``` and ```DIS = 1```
+3. Scenario \#2: ```SEX = 1, RACE = 1, MAR = 1``` and ```DIS = 1```
 
     1. If you know someone with ```SEX = 1, RACE = 1, MAR = 1, DIS = 1``` and this person is in this sample, can you find out which record in the sample belongs to this person? What additional information can you learn about this person?
     
