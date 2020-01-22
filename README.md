@@ -20,6 +20,4 @@ Statistical agencies are under legal obligation to protect survey respondents’
     
     2. Which scenario is more favorable to an intruder, Scenario \#1 vs Scenario \#2?
     
-**Make sure to use an R script / R Markdown file to document your work and bring to class.**
-
-**Make sure to note any questions / comments you have as you are answering these questions.**
+**Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
