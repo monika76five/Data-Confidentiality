@@ -22,3 +22,4 @@ Statistical agencies are under legal obligation to protect survey respondents’
     
 **Make sure to use an R script / R Markdown file to document your work and bring to class.**
 
+**Make sure to note any questions / comments you have as you are answering these questions.**
