@@ -5,3 +5,7 @@ Description: Statistical agencies are under legal obligation to protect survey r
 ## Introduction, Tuesday 1/28/2020
 
 ### To-dos
+
+1. Download the ```ACSdata.csv``` file in the datasets folder. Read the data dictionary file to explore this dataset.
+
+2. 
