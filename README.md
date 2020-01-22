@@ -4,7 +4,7 @@ Statistical agencies are under legal obligation to protect survey respondents’
 
 ## Introduction, Tuesday 1/28/2020
 
-### To-dos
+### To-dos (done before class on 1/28)
 
 1. Download the ```ACSdata.csv``` file in the datasets folder. Read the data dictionary file to explore this dataset.
 
