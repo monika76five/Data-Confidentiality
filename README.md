@@ -23,3 +23,22 @@ Here is [a growing YouTube playlist of the lecture recordings from Spring 2020](
     2. Which scenario is more favorable to an intruder, Scenario \#1 vs Scenario \#2?
     
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
+
+
+## Introduction, Tuesday 2/4/2020
+
+### To-dos (done before class on 2/4)
+
+1. Check out the ```CEsample.csv``` file in the datasets folder. Read the data dictionary file to explore this dataset. Recall that we used this dataset for the topic of Bayesian linear regression in MATH 347.
+
+2. Among the four variables, can you come up with an order of most sensitive to least sensitive? Explain your decision making process.
+
+3. If you decide to use Bayesian synthesis models to generate synthetic values for ```Income```, what models would you use, and why? Please write out the model explicitly.
+
+4. If you decide to use Bayesian synthesis models to generate synthetic values for ```Expenditure```, what models would you use, and why? Please write out the model explicitly.
+
+5. If you decide to use Bayesian synthesis models to generate synthetic values for ```Rural```, what models would you use, and why? Please write out the model explicitly.
+
+6. If you decide to use Bayesian synthesis models to generate synthetic values for ```Race```, what models would you use, and why? Please write out the model explicitly.
+
+7. What if you think both ```Income``` and ```Rural``` are sensitive and you decide to generate synthetic values for them, what kind of approaches can you come up with? If you can, write out the model explicitly.
