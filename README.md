@@ -29,7 +29,7 @@ Here is [a growing YouTube playlist of the lecture recordings from Spring 2020](
 
 ### To-dos (done before class on 2/4)
 
-1. Check out the ```CEsample.csv``` file in the datasets folder. Read the data dictionary file to explore this dataset. Recall that we used this dataset for the topic of Bayesian linear regression in MATH 347.
+1. Check out the ```CEdata.csv``` file in the datasets folder. Read the data dictionary file to explore this dataset. Recall that we used this dataset for the topic of Bayesian linear regression in MATH 347.
 
 2. Among the four variables, can you come up with an order of most sensitive to least sensitive? Explain your decision making process.
 
