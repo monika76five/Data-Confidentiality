@@ -2,6 +2,8 @@
 
 Statistical agencies are under legal obligation to protect survey respondents’ privacy when releasing respondent-level data to the public. Statistical models could facilitate such release by introducing perturbation to the original, confidential data. How to develop suitable statistical models, and how to evaluate the privacy protection they produce, are the focus of this Intensive.
 
+Here is [the tentative schedule](https://docs.google.com/spreadsheets/d/119NV9ZkKvPD0r-5N3AlDxbNZUpVK1Lr7j2WX7xL1FHU/edit?usp=sharing).
+
 Here is [a growing YouTube playlist of the lecture recordings from Spring 2020](https://www.youtube.com/playlist?list=PL_lWxa4iVNt0XPY0E0MDuGhKvbq_767mr).
 
 ## Introduction, Tuesday 1/28/2020
