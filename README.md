@@ -67,3 +67,5 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     3. How many synthetic datasets did they generate?
     4. How did they evaluate the utility of the synthetic datasets? Can you think of any other utility measures?
     5. How did they evaluate the disclosure risks? Can you think of any other disclosure risks measures?
+    
+4. Start thinking about your course project! What public use datasets that you think are risky? It might be a good idea to find appropriate datasets as soon as you can.
