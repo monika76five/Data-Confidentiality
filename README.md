@@ -37,10 +37,10 @@ Here is [a growing YouTube playlist of the lecture recordings from Spring 2020](
 
 4. If you decide to use Bayesian synthesis models to generate synthetic values for ```Expenditure```, what models would you use, and why? Please write out the model explicitly.
 
-5. If you decide to use Bayesian synthesis models to generate synthetic values for ```Rural```, what models would you use, and why? Please write out the model explicitly.
+5. If you decide to use Bayesian synthesis models to generate synthetic values for ```UrbanRural```, what models would you use, and why? Please write out the model explicitly.
 
 6. If you decide to use Bayesian synthesis models to generate synthetic values for ```Race```, what models would you use, and why? Please write out the model explicitly.
 
-7. What if you think both ```Income``` and ```Rural``` are sensitive and you decide to generate synthetic values for both of them, what kind of approaches can you come up with? If you can, write out the model explicitly.
+7. What if you think both ```Income``` and ```UrbanRural``` are sensitive and you decide to generate synthetic values for both of them, what kind of approaches can you come up with? If you can, write out the model explicitly.
 
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
