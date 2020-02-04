@@ -48,3 +48,10 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 7. What if you think both ```Income``` and ```UrbanRural``` are sensitive and you decide to generate synthetic values for both of them, what kind of approaches can you come up with? If you can, write out the model explicitly.
 
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
+
+
+## Bayesian Synthesis Models part 2, Tuesday 2/11/2020
+
+### To-dos (done before class on 2/11)
+
+1. Check out the lecture slides (S20MATH301_BayesianSynthesisModels.pdf), especially pages 23-29, and digest how to generate $m = 1$ synthetic dataset and how to generate $m = 20$ synthetic datasets. Specifically, pay attention to how we are using the posterior draws of $\{\beta_0, \beta_1, \sigma\}$.
