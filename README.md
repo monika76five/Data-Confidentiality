@@ -54,4 +54,4 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 
 ### To-dos (done before class on 2/11)
 
-1. Check out the lecture slides (S20MATH301_BayesianSynthesisModels.pdf), especially pages 23-29, and digest how to generate ```m = 1``` synthetic dataset and how to generate ```m = 20``` synthetic datasets. Specifically, pay attention to how we are using the posterior draws of ```\{\beta_0, \beta_1, \sigma\}```.
+1. Check out the lecture slides (S20MATH301_BayesianSynthesisModels.pdf), especially pages 23-29, and digest how to generate ```m = 1``` synthetic dataset and how to generate ```m = 20``` synthetic datasets. Specifically, pay attention to how we are using the posterior draws of ```\{$\beta_0, \beta_1, \sigma$\}```.
