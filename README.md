@@ -54,4 +54,16 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 
 ### To-dos (done before class on 2/11)
 
-1. Check out the lecture slides (S20MATH301_BayesianSynthesisModels.pdf), especially pages 23-29, and digest how to generate ```m = 1``` synthetic dataset and how to generate ```m = 20``` synthetic datasets. Specifically, pay attention to how we are using the posterior draws of ```\{beta_0, \beta_1, \sigma\}```.
+1. Check out the lecture slides (S20MATH301_BayesianSynthesisModels.pdf), especially pages 23-29, and digest how to generate ```m = 1``` synthetic dataset and how to generate ```m = 20``` synthetic datasets. Specifically, pay attention to how we are using the posterior draws of ```\{beta_0, beta_1, sigma\}```.
+
+2. Use your own synthesis model (different from the simple linear regression we covered in class) to synthesize ```m = 1``` synthetic dataset for the CE sample. 
+    1. Make a scatter plot of the synthesized ```log(Income)``` against the original ```log(Income)```, and see what you find.
+    2. Compare the mean and median of ```log(Income)```, in the original dataset and the confidential dataset. Are they close to each other?
+    3. Compare the point estimate of the regression coefficients of ```log(Income)``` on ```log(Expenditure)```, in the original dataset and the confidential dataset. Are they close to each other? 
+    
+3. Read ```Kinney et al (2011)``` in the References folder, and prepare answers to the following questions.
+    1. What are the synthesized and un-synthesized variables in the SynLBD?
+    2. What Bayesian synthesis model(s) did they use?
+    3. How many synthetic datasets did they generate?
+    4. How did they evaluate the utility of the synthetic datasets? Can you think of any other utility measures?
+    5. How did they evaluate the disclosure risks? Can you think of any other disclosure risks measures?
