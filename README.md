@@ -25,7 +25,7 @@ Here is [a growing YouTube playlist of the lecture recordings from Spring 2020](
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
 
 
-## Bayesian Synthesis Models \#1, Tuesday 2/4/2020
+## Bayesian Synthesis Models part 1, Tuesday 2/4/2020
 
 ### To-dos (done before class on 2/4)
 
