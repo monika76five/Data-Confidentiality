@@ -63,9 +63,10 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     
 3. Read ```Kinney et al (2011)``` in the References folder, and prepare answers to the following questions.
     1. What are the synthesized and un-synthesized variables in the SynLBD?
-    2. What Bayesian synthesis model(s) did they use?
-    3. How many synthetic datasets did they generate?
-    4. How did they evaluate the utility of the synthetic datasets? Can you think of any other utility measures?
-    5. How did they evaluate the disclosure risks? Can you think of any other disclosure risks measures?
+    2. What approaches did they take when they have more than 1 variables deemed sensitive and to be synthesized?
+    3. What Bayesian synthesis model(s) did they use?
+    4. How many synthetic datasets did they generate?
+    5. How did they evaluate the utility of the synthetic datasets? Can you think of any other utility measures?
+    6. How did they evaluate the disclosure risks? Can you think of any other disclosure risks measures?
     
 4. Start thinking about your course project! What public use datasets that you think are risky? It might be a good idea to find appropriate datasets as soon as you can.
