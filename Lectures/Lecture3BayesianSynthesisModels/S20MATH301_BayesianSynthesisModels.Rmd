@@ -147,7 +147,7 @@ ggplot(CEdata, aes(x = LogExpenditure, y = LogIncome)) +
 - Let $Y_i$ be the ```log(Income)``` and $X_i$ be the ```log(Expenditure)``` for CU $i$, a Bayesian simple linear regression model can be expressed as:
 
 \begin{eqnarray}
-Y_i \mid \mu_i, \sigma &\overset{ind}{\sim}& \textrm{Normal}(\mu, \sigma)  \\
+Y_i \mid \mu_i, \sigma &\overset{ind}{\sim}& \textrm{Normal}(\mu_i, \sigma)  \\
 \mu_i &=& \beta_0 + \beta_1 X_i
 \end{eqnarray}
 \pause
@@ -320,7 +320,7 @@ post <- as.mcmc(posterior)
 ```{r message=FALSE, size = "footnotesize"}
 synthesize <- function(X, index, n){
   mean_Y <- post[index, "beta0"] +  X * post[index, "beta1"]
-  synthetic_Y <- rnorm(n, mean_Y, post[, "sigma"])
+  synthetic_Y <- rnorm(n, mean_Y, post[index, "sigma"])
   data.frame(X, synthetic_Y)
 }
 ```
@@ -335,7 +335,7 @@ synthesize <- function(X, index, n){
 ```{r message=FALSE, size = "footnotesize", eval = FALSE}
 synthesize <- function(X, index, n){
   mean_Y <- post[index, "beta0"] +  X * post[index, "beta1"]
-  synthetic_Y <- rnorm(n, mean_Y, post[, "sigma"])
+  synthetic_Y <- rnorm(n, mean_Y, post[index, "sigma"])
   data.frame(X, synthetic_Y)
 }
 ```
