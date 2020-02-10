@@ -10,7 +10,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 
 ## Introduction, Tuesday 1/28/2020
 
-### To-dos (done before class on 1/28)
+### To-do (done before class on 1/28)
 
 1. Download the ```ACSdata.csv``` file in the datasets folder. Read the data dictionary file to explore this dataset.
 
@@ -31,7 +31,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 
 ## Bayesian Synthesis Models part 1, Tuesday 2/4/2020
 
-### To-dos (done before class on 2/4)
+### To-do (done before class on 2/4)
 
 1. Check out the ```CEdata.csv``` file in the datasets folder. Read the data dictionary file to explore this dataset. Recall that we used this dataset for the topic of Bayesian linear regression in MATH 347.
 
@@ -52,7 +52,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 
 ## Bayesian Synthesis Models part 2, Tuesday 2/11/2020
 
-### To-dos (done before class on 2/11)
+### To-do (done before class on 2/11)
 
 1. Check out the lecture slides (S20MATH301_BayesianSynthesisModels.pdf), especially pages 23-29, and digest how to generate ```m = 1``` synthetic dataset and how to generate ```m = 20``` synthetic datasets. Specifically, pay attention to how we are using the posterior draws of ```beta_0, beta_1, sigma```.
 
