@@ -1,0 +1,96 @@
+---
+title: "Bayesian Synthesis"
+author: "Reese Guo"
+date: "2/10/2020"
+output: pdf_document
+---
+
+## 2
+```{r,message=FALSE, warning=FALSE}
+library(ggplot2)
+Data <- read.csv("CEdata.csv")
+Rural <- Data$UrbanRural
+Income <- Data$Income
+Race <- Data$Race
+Expenditure <- Data$Expenditure
+```
+
+```{r, message=FALSE, warning=FALSE}
+require(runjags)
+require(coda)
+
+modelString <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dlnorm(mu, invsigma2)
+}
+## priors
+mu ~ dnorm(mu_0, invtau2)
+invsigma2 ~ dgamma(a, b)
+invtau2 ~ dgamma(c, d)
+sigma <- sqrt(pow(invsigma2, -1))
+tau <- sqrt(pow(invtau2, -1))
+}"
+
+N <- length(Income)
+
+the_data <- list("y" = Income, "N" = N,
+"mu_0" = 0,
+"a" = 1, "b" = 1,
+"c" = 1, "d" = 1)
+
+initsfunction <- function(chain){
+.RNG.seed <- c(1,2)[chain]
+.RNG.name <- c("base::Super-Duper",
+"base::Wichmann-Hill")[chain]
+return(list(.RNG.seed=.RNG.seed,
+.RNG.name=.RNG.name))
+}
+
+posterior <- run.jags(modelString,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("mu", "sigma", "tau"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 3,
+                      inits = initsfunction)
+```
+### (i)
+```{r}
+plot(posterior, vars = "mu")
+post <- as.mcmc(posterior)
+
+logIncome <- log(Income)
+n <- length(Income)
+Income_syn <- rlnorm(n, post[5000, "mu"], post[5000, "sigma"])
+logIncome_syn <- log(Income_syn)
+
+
+plot(logIncome_syn, col = "#FC4E07", pch = 17) 
+points(logIncome, pch = 16, col = "#0073C2FF") + title("Scatter plot of original and synthesized income")
+legend("bottomright", legend = c("original", "synthesized"),
+       col = c("#0073C2FF", "#FC4E07"), pch = c(16, 17) )
+```
+As shown in the scatter plot above, the distribution of logged synthesized income is similar to that of logged original income. The difference between two set of data is that original data tend to have more low logged income values, whereas, the synthesized data tend to have more high logged income values.
+
+### (ii)
+```{r}
+mean(logIncome)
+mean(logIncome_syn)
+median(logIncome)
+median(logIncome_syn)
+```
+We can see that the mean of the logged synthesized income is larger than the mean of the logged original income data. However, medians of the two datasets are similar. 
+
+###(iii)
+```{r}
+logExpenditure <- log(Expenditure)
+linearMod <- lm(logExpenditure ~ logIncome) 
+summary(linearMod)
+linearMod_one <- lm(logExpenditure ~ logIncome_syn)
+summary(linearMod_one)
+```
+As we can see from the result of the linear regression above, the regression coefficient between logged original income and logged expenditure is very different from the regression coefficient of between logged synthesized income and logged expenditure. The cause of this difference is probably that in my synthesis model, I didn't preserve the relationship of income to other variables and I just synthesized income data itself. Thus, the newly synthesized data is unlikely to have the same relationship with other variables.
