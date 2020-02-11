@@ -29,7 +29,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
 
 
-## Bayesian Synthesis Models part 1, Tuesday 2/4/2020
+## Bayesian Synthesis Models \# 1, Tuesday 2/4/2020
 
 ### To-do (done before class on 2/4)
 
@@ -50,7 +50,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
 
 
-## Bayesian Synthesis Models part 2, Tuesday 2/11/2020
+## Bayesian Synthesis Models \# 2, Tuesday 2/11/2020
 
 ### To-do (done before class on 2/11)
 
