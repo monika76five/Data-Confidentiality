@@ -2,7 +2,9 @@
 title: "analysis_2-10"
 author: "Kevin Ros"
 date: "2/6/2020"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -186,9 +188,9 @@ synthetic_one <- synthesize(params,1,n)
 names(synthetic_one) <- c("OriginalIncome", "logIncome_syn")
 ```
 
-Plotting the syntheticly generated income with the original income gives us a straight line!
+Plotting the syntheticly generated income with the original income gives us the following:
 ```{r}
-plot(data$log_TotalIncomeSTD, synthetic_one$OriginalIncome)
+plot(data$log_TotalIncomeSTD, synthetic_one$logIncome_syn)
 ```
 ```{r}
 plot(data$log_TotalExpSTD, data$log_TotalIncomeSTD)
