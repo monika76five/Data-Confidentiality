@@ -93,6 +93,6 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     4. <ins>Evaluate the global utility measures of your synthesized ```log(Income)``` from your Bayesian synthesis model for the CE sample.</ins>
     5. Which global measure do you think works the best? The least? Give explanations.
     
-3. Find one or more datasets and demonstrate potential disclosure risks. You can start with identification disclosure.
+3. <ins>Find one or more datasets and demonstrate potential disclosure risks. You can start with identification disclosure.</ins>
 
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
