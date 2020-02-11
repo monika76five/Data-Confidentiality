@@ -131,32 +131,36 @@ posterior_list = lapply(colnames(posterior_df), function(x) posterior_df%>%pull(
 
 I also define my synthetic sampler functions, which let the user choose their desired m. Importantly, I randomly sample the row to which each $i = 1, \ldots, m$ correspondents, in the spirit of randomizing wherever possible.
 ```{r}
-synth_helper <- function(posterior_list, df, m = 1, seeder = function(x){return(x%%5)}){
+synth_helper <- function(posterior_list, df){
   
   #randomly select posterior draw to use
-  set.seed(seeder(m))
-  idx_grab = sample(1:length(posterior_list[[1]]), m, replace = F)
   
-  beta_suffix = paste0(".",df$Race, ".", df$UrbanRural, ".")
-  sigma_suffix = paste0(".", df$Race, ".")
+  idx_grab = sample(1:nrow(df), 1)
   
-  mu_post = posterior_list[[paste0("B_0", beta_suffix)]][idx_grab] + 
-    posterior_list[[paste0("B_1", beta_suffix)]][idx_grab]*df%>%pull(logExp)
+  beta_suffixes = paste0(".", df$Race, ".", df$UrbanRural, ".")
+  sigma_suffixes = paste0(".", df$Race, ".")
   
-  sig_post = posterior_list[[paste0("sigma", sigma_suffix)]][idx_grab]
-  result = rnorm(m, mu_post, sig_post)
+  b0 = sapply(beta_suffixes, function(x) posterior_list[[paste0("B_0", x)]][idx_grab])%>%as.vector()
+  b1 = sapply(beta_suffixes, function(x) posterior_list[[paste0("B_1", x)]][idx_grab])%>%as.vector()
+  
+  
+  mu_post = b0+b1*df%>%pull(logExp)
+  sig_post = sapply(sigma_suffixes, function(x) posterior_list[[paste0("sigma", x)]][idx_grab])%>%as.vector()
+  
+  result = rnorm(nrow(df), mu_post, sig_post)
   
   return(result)
 }
 
 
-synth_logInc <- function(posterior_list, df, ...){
+synth_logInc <- function(posterior_list, df, m=1, ...){
+  set.seed(m%%3)
   
-  lapply(1:nrow(df),
-         function(x) synth_helper(posterior_list, df[x,], ...)
+  lapply(1:m,
+         function(y)
+           synth_helper(posterior_list, df, ...)
          )%>%
     return()
-  
 }
 ```
 
@@ -181,7 +185,7 @@ ggplot(data.frame(logInc_true = CEsample$logInc,
                   UrbanRural = as.factor(CEsample$UrbanRural)),
        aes(x = logInc_true,color = Race))+
   geom_density() +
-  geom_density(aes(x = logInc_synth,color = Race), linetype = "dotted")
+  geom_density(aes(x = logInc_synth,color = Race), linetype = "dotted")+
   labs(x = "True logInc",title = "Synthetic v. True Log Incs (m = 1)",
        caption = "dotted --> true density")
 ```
@@ -189,7 +193,7 @@ ggplot(data.frame(logInc_true = CEsample$logInc,
 ## i.)
 At first glance, it doesn't appear as though my synthetic dataset did a particularly good job. For one, the synthetic densities (filled lines) of `logInc` are positioned and stretched differently than the true densities (dotted lines) -- in fact, the hierarchcial model seemed to introduce too much pooling/shrinkage into the synthetic distribution. Further, in examining the scatterplot, we do not see a "centering" about the $y = x$ line that represents true 1:1 correspondence. This also suggests that this synthetic generator may not do the best job of recreating the underlying distribution.
 
-The poor performance here is probably due to a poor model that introduces too much pooling. However, it's also worth nothing that this was run for $m = 1.$ As detailed in the slides, traditional practice is to use $m>1$, so as to minimize reliance on a single, perhaps outlandish posterior draw. 
+The poor performance here likely stems from either a coding error, or a poorly fit model -- perhaps, despite the shared prior/hyperprior, parameter sampling is still occuring wildly. However, it's also worth nothing that this was run for $m = 1.$ As detailed in the slides, traditional practice is to use $m>1$, so as to minimize reliance on a single, perhaps outlandish posterior draw. 
 
 
 ## ii.)
@@ -208,7 +212,7 @@ ggplot(compare_lm%>%gather(type, logInc, -logExp_true),
 
 summary(lm(logInc_true~logExp_true, compare_lm)); summary(lm(logInc_synth~logExp_true, compare_lm))
 ```
-In comparing linear regressions of both the synthetic and true incomes against true expense, we see that the parameters for $B_0$ and $B_1$ were reasonably close, with the former in the 3.7-4.1 range and the latter in the .73-74 range. However, in looking at the scatterplot, it looks like the $\sigma$ part of the model is where things went awry -- in short, the samples of sigma drawn are far too small. Perhaps this is the result of a coding error in JAGs (I've looked pretty exhaustively, however), or perhaps it has to do with the model structure. Perhaps we would sample more reasonable sigma values if we dropped the hierarchical component of sigma altogether, or if we added hyperpriors for each race-wise level of sigma. In short, the regression part of the model appears ok; it's the sigma that needs cleaning up. 
+In comparing linear regressions of both the synthetic and true incomes against true expense, we see that the parameters for $B_0$ and $B_1$ were reasonably close, with the former in the 3.7-4.1 range and the latter in the .73-74 range. 
 
 
 
