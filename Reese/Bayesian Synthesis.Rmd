@@ -73,6 +73,11 @@ plot(logIncome_syn, col = "#FC4E07", pch = 17)
 points(logIncome, pch = 16, col = "#0073C2FF") + title("Scatter plot of original and synthesized income")
 legend("bottomright", legend = c("original", "synthesized"),
        col = c("#0073C2FF", "#FC4E07"), pch = c(16, 17) )
+
+ggplot(NULL, aes(x = logIncome, y = logIncome_syn)) +
+  geom_point(size = 1) + 
+  labs(title="scatter plot of synthesized and original income")
+
 ```
 As shown in the scatter plot above, the distribution of logged synthesized income is similar to that of logged original income. The difference between two set of data is that original data tend to have more low logged income values, whereas, the synthesized data tend to have more high logged income values.
 
