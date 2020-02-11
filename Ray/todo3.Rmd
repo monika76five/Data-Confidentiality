@@ -1,0 +1,75 @@
+
+```{r, message=FALSE, warning=FALSE}
+library(runjags)
+library(coda)
+library(ggplot2)
+data<- read.csv("CEdata.csv")
+urban<- data$UrbanRural
+inc<- data$Income
+race<- data$Race
+exp<- data$Expenditure
+modelString<- "
+model{
+for (i in 1:N){
+y[i] ~ dnorm(mu,invsigma2)
+}
+## priors
+mu ~ dnorm(mu_0,invtau2)
+invsigma2 ~ dgamma(a,b)
+invtau2 ~ dgamma(a,b)
+sigma <- sqrt(pow(invsigma2,-1))
+tau <- sqrt(pow(invtau2,-1))
+}"
+N<- length(inc)
+the_data<- list("y"= inc, "N"= N, "mu_0"= 0, "a"= 1, "b"= 1)
+initsfunction <- function(chain){
+.RNG.seed <- c(1,2)[chain]
+.RNG.name <- c("base::Super-Duper",
+"base::Wichmann-Hill")[chain]
+return(list(.RNG.seed=.RNG.seed,
+.RNG.name=.RNG.name))
+}
+posterior<- run.jags(modelString,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("mu", "sigma", "tau"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 3,
+                      inits = initsfunction)
+```
+### (i)
+```{r}
+post<- as.mcmc(posterior)
+loginc<- log(inc)
+syninc<- rnorm(N, post[3000, "mu"], post[3000, "sigma"])
+logsyn<- log(syninc)
+data2<- data.frame(logsyn, loginc)
+ggplot(data2, aes(x= logsyn, y= loginc))+geom_point()
+```
+It seems that both original and synthesized log income have more higher logged values. 
+
+### (ii)
+```{r}
+data2$logsyn<- rowMeans(data2, na.rm = TRUE)
+mean(data2$loginc)
+mean(data2$logsyn)
+median(data2$loginc)
+median(data2$logsyn)
+```
+Mean and median of the logged synthesized income and original one are pretty close.
+
+###(iii)
+```{r}
+logexp<- log(exp)
+lm1<- lm(logexp ~ loginc) 
+summary(lm1)
+lm2<- lm(logexp ~ logsyn)
+summary(lm2)
+```
+The point estimate resulting from two datasets are quite different.
+
+
+
+
