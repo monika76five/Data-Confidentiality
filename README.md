@@ -90,7 +90,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     1. What are the pros and cons of analysis-specific measures?
     2. What are the pros and cons of global measures?
     3. What are the similaries between the proposed global measures?
-    4. __*Evaluate the global utility measures of your synthesized ```log(Income)``` from your Bayesian synthesis model for the CE sample.*__
+    4. <ins>Evaluate the global utility measures of your synthesized ```log(Income)``` from your Bayesian synthesis model for the CE sample.</ins>
     5. Which global measure do you think works the best? The least? Give explanations.
     
 3. Find one or more datasets and demonstrate potential disclosure risks. You can start with identification disclosure.
