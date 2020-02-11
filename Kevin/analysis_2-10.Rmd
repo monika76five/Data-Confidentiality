@@ -9,12 +9,16 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+Collaboration: I wasn't sure where to start, and Henrik pointed me in the direction of last year's multiple linear regression slides:
+https://github.com/monika76five/Undergrad-Bayesian-Statistics/blob/master/Lectures/BayesianLinearRegression/F19MATH347_Regression_R.pdf
+which I implemented, as it wasn't too clear how to do hierarchical modeling with categorical variables (but I think fastDummies can be used). 
+Additionally, Henrik and I discussed the simulation portion, namely how one needs to pass a data frame of each variable, and not just income. 
 ```{r}
 library(ggplot2)
 library(coda)
 library(runjags)
 library(fastDummies)
-data = data.frame(read.csv("../Data-Confidentiality/datasets/CEsample.csv",header=TRUE))
+data = data.frame(read.csv("../datasets/CEdata.csv",header=TRUE))
 ```
 
 ```{r}
@@ -64,11 +68,13 @@ data = data.frame(read.csv("../Data-Confidentiality/datasets/CEsample.csv",heade
 # plot(posterior, vars = "beta0")
 ```
 
+The original slides has scale(), but I removed it to better interpret the results.
 ```{r}
-data$log_TotalExpSTD <- scale(log(data$TotalExpLastQ))
-data$log_TotalIncomeSTD <- scale(log(data$TotalIncomeLastYear))
+data$log_TotalExpSTD <- log(data$Expenditure)
+data$log_TotalIncomeSTD <- log(data$Income)
 ```
 
+Create the binary columns and rows for each categorical variable:
 ```{r}
 data$Rural = fastDummies::dummy_cols(data$UrbanRural)[,names(fastDummies::dummy_cols(data$UrbanRural))== ".data_2"]
 data$Race_Black = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_2"]
@@ -78,6 +84,7 @@ data$Race_PI = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols
 data$Race_M = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_6"]
 ```
 
+Same parameters from slides:
 ```{r}
 modelString <-"
 model {
@@ -115,6 +122,7 @@ x_race_M = as.vector(data$Race_M)
 N = length(y) 
 ```
 
+Same parameter values from slides:
 ```{r}
 the_data <- list("y" = y, "x_income" = x_income,
                  "x_rural" = x_rural, "x_race_B" = x_race_B,
@@ -138,6 +146,7 @@ initsfunction <- function(chain){
 }
 ```
 
+Thinning of 50 is needed, otherwise beta0 and beta1 have very high lag
 ```{r}
 posterior_MLR <- run.jags(modelString,
                       n.chains = 1,
@@ -148,12 +157,13 @@ posterior_MLR <- run.jags(modelString,
                       adapt = 1000,
                       burnin = 5000,
                       sample = 5000,
-                      thin = 1,
+                      thin = 50,
                       inits = initsfunction)
 ```
 
 ```{r}
 summary(posterior_MLR)
+plot(posterior_MLR)
 ```
 
 ```{r}
@@ -174,15 +184,39 @@ n <- dim(data)[1]
 params <- data.frame(x_income, x_rural, x_race_B, x_race_N, x_race_A, x_race_P, x_race_M)
 synthetic_one <- synthesize(params,1,n)
 names(synthetic_one) <- c("OriginalIncome", "logIncome_syn")
-plot(synthetic_one$OriginalIncome, synthetic_one$logIncome_syn)
+```
+
+Plotting the syntheticly generated income with the original income gives us a straight line!
+```{r}
+plot(data$log_TotalIncomeSTD, synthetic_one$OriginalIncome)
+```
+```{r}
+plot(data$log_TotalExpSTD, data$log_TotalIncomeSTD)
+plot(data$log_TotalExpSTD, synthetic_one$logIncome_syn)
+```
+The mean of the original income (10.59) is slightly more than the synthetic mean (8.77), a little more than one standard deviation.
+```{r}
 mean(synthetic_one$OriginalIncome)
 mean(synthetic_one$logIncome_syn)
+```
+Just as with the mean, the median of the original income (10.7) is slightly more than the median of the synthetic income median (8.81), a little more than one standard deviation.
+```{r}
+median(synthetic_one$OriginalIncome)
+median(synthetic_one$logIncome_syn)
+```
+```{r}
 sd(synthetic_one$OriginalIncome)
 sd(synthetic_one$logIncome_syn)
-
 ```
-The means for the original and synthetic income are fairly close (both approximately zero) and the standard deviations are also fairly close (both approximately one).
- 
+
+Regarding the point estimates, with an expenditure of 0, original income will be 4.3219 and synthetic income will be 5.8609.
+And with every unit increase of expenditure, the original income increases by 0.4211 and the synthetic income increases by 0.3333. 
+Of course, all of these values are in log form.
+```{r}
+lm(data$log_TotalExpSTD ~ data$log_TotalIncomeSTD)
+lm(data$log_TotalExpSTD ~ synthetic_one$logIncome_syn)
+```
+
 
 
 
