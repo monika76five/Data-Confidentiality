@@ -8,4 +8,4 @@ Tuesday 2/25: presentation of your synthesis model(s) for your chosen dataset(s)
 
 Tuesday 3/3: presentation of utility evaluation: methods and results
 
-Tuesday 3/31: presentation of disclosure risks: methods and results
+Tuesday 3/31: presentation of disclosure risks evaluation: methods and results
