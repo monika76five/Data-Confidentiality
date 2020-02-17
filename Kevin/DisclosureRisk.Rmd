@@ -1,0 +1,80 @@
+---
+title: "DisclosureRisk"
+author: "Kevin Ros"
+date: "2/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(ggplot2)
+library(coda)
+library(runjags)
+library(fastDummies)
+data = data.frame(read.csv("personsxcsv/personsx.csv",header=TRUE))
+```
+
+The NIHS Person data set is :
+
+NHIS collects data on both adult and children’s mental health and mental disorders. For adults, this includes serious psychological distress and feelings of depression and anxiety.  For children, this includes the presence of  attention deficit/hyperactivity disorder and autism spectrum disorder.  The NHIS also examines mental health service use and whether individuals have unmet mental health needs. Questions about recent anxiety or frequent stress have been included in previous years.
+
+```{r}
+nrow(data[data$SEX == 1,]) # Male
+nrow(data[data$SEX == 2,]) # Female
+```
+
+```{r}
+ggplot(data, aes(x = data$ERNYR_P)) + geom_histogram()
+```
+```{r}
+ggplot(data, aes(x = data$WRKHRS2)) + geom_histogram()
+```
+```{r}
+ggplot(data, aes(x = data$AGE_P)) + geom_histogram()
+```
+
+
+```{r}
+ggplot(data, aes(x = data$RACERPI2)) + geom_histogram()
+#01 White only
+#02 Black/African American only
+#03 AIAN only
+#04 Asian only
+#05 Race group not releasable*
+#06 Multiple race
+
+```
+
+
+```{r}
+ggplot(data, aes(x = data$COHAB1)) + geom_histogram()
+ggplot(data, aes(x = data$COHAB2)) + geom_histogram()
+
+```
+
+```{r}
+ggplot(data, aes(x = data$LAHCA29_)) + geom_histogram()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

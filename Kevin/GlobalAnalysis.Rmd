@@ -1,0 +1,73 @@
+---
+title: "GlobalAnalysis"
+author: "Kevin Ros"
+date: "2/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+load("synthetic_one.Rda")
+```
+
+
+
+Evaluating the propensity score measure:
+```{r}
+zero_col = rep(0,nrow(synthetic_one))
+tmp_orig = data.frame(synthetic_one$OriginalIncome)
+tmp_orig$T = zero_col
+colnames(tmp_orig)[colnames(tmp_orig) == "synthetic_one.OriginalIncome"] <- "Income"
+one_col = rep(1,nrow(synthetic_one))
+tmp_syn = data.frame(synthetic_one$logIncome_syn)
+tmp_syn$T = one_col
+colnames(tmp_syn)[colnames(tmp_syn) == "synthetic_one.logIncome_syn"] <- "Income"
+
+merged_data = rbind(tmp_orig, tmp_syn)
+
+log_reg_model = glm(T ~ Income, data = merged_data, family = "binomial")
+
+N = nrow(merged_data)
+c = 1/2
+
+pred = data.frame(merged_data$Income)
+
+pred$rankP = predict(log_reg_model, newdata = pred$Income, type = "response")
+
+p_score = 0
+for (row in 1:nrow(pred)) {
+  p_score = p_score + (pred[row, "rankP"] - c)^2
+}
+p_score = p_score * (1/N)
+p_score
+```
+
+Evaluating the cluster analysis measure:
+```{r}
+num_groups = 100
+c = 1/2
+
+fit = kmeans(merged_data$Income,num_groups)
+aggregate(merged_data$Income,by=list(fit$cluster),FUN=mean)
+merged_data <- data.frame(merged_data, fit$cluster) 
+
+cluster_score = 0
+
+for (group in 1:num_groups) {
+  group_data_orig = merged_data[merged_data$fit.cluster == group & merged_data$T == 0,]
+  group_data_syn = merged_data[merged_data$fit.cluster == group & merged_data$T == 1,]
+  cluster_score = cluster_score + ((nrow(group_data_orig) / (nrow(group_data_orig) + nrow(group_data_syn))) - c)^2
+}
+cluster_score =  cluster_score * 1/num_groups
+cluster_score
+```
+Evaluating emperical CDF measures:
+```{r}
+
+```
+```
