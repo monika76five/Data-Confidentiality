@@ -1,0 +1,119 @@
+---
+title: "Class Assignment #01"
+date: "January 26, 2020"
+author: "Yitong Wu"
+output: html_notebook
+---
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+data <- read.csv("ACSdata.csv")
+```
+
+Scenario #1: SEX = 1, RACE = 1, MAR = 1
+
+  1. If you know someone with SEX = 1, RACE = 1, MAR = 1 and this person is in this sample, can you find out which record in the sample belongs to this person? What additional information can you learn about this person?
+  
+```{r}
+data <- data %>% filter(SEX==1, RACE==1, MAR==1)
+```
+
+```{r}
+WAOB_data <- c()
+for (i in 1:7){
+  WAOB_data[i] <- sum(data$WAOB==i)
+}
+lbls <- c("US state", "PR", "Latin
+America", "Asia", "Europe", "Africa", "Northern America")
+df <- data.frame(
+  group = lbls,
+  value = WAOB_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+HICOV_data <- c()
+for (i in 1:2){
+  HICOV_data[i] <- sum(data$HICOV==i)
+}
+lbls <- c("with coverage", "without coverage")
+df <- data.frame(
+  group = lbls,
+  value = HICOV_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+SCH_data <- c()
+for (i in 1:3){
+  SCH_data[i] <- sum(data$SCH==i)
+}
+lbls <- c("out of school in last 3 months", "in public school or college", "in private school or college or home school")
+df <- data.frame(
+  group = lbls,
+  value = SCH_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+  2. If you know someone with SEX = 1, RACE = 1, MAR = 1 but you are not sure if this person is in this sample, what would you do to find this person? What additional information can you learn about this person?
+  Use filter to see if any record in this sample matches the criteria
+  
+Scenario #2: SEX = 1, RACE = 1, MAR = 1 and DIS = 1
+
+  1. If you know someone with SEX = 1, RACE = 1, MAR = 1, DIS = 1 and this person is in this sample, can you find out which record in the sample belongs to this person? What additional information can you learn about this person?
+  
+```{r}
+data <- read.csv("ACSdata.csv")
+data <- data %>% filter(SEX == 1, RACE == 1, MAR == 1, DIS == 1)
+```
+  
+```{r}
+WAOB_data <- c()
+for (i in 1:7){
+  WAOB_data[i] <- sum(data$WAOB==i)
+}
+lbls <- c("US state", "PR", "Latin
+America", "Asia", "Europe", "Africa", "Northern America")
+df <- data.frame(
+  group = lbls,
+  value = WAOB_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+HICOV_data <- c()
+for (i in 1:2){
+  HICOV_data[i] <- sum(data$HICOV==i)
+}
+lbls <- c("with coverage", "without coverage")
+df <- data.frame(
+  group = lbls,
+  value = HICOV_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+SCH_data <- c()
+for (i in 1:3){
+  SCH_data[i] <- sum(data$SCH==i)
+}
+lbls <- c("out of school in last 3 months", "in public school or college", "in private school or college or home school")
+df <- data.frame(
+  group = lbls,
+  value = SCH_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+  2. Which scenario is more favorable to an intruder, Scenario #1 vs Scenario #2?
+  Scenario #2

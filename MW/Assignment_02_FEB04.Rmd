@@ -1,0 +1,150 @@
+---
+title: "Assignment #02"
+author: "Yitong Wu"
+date: "February 04, 2020"
+output: html_notebook
+---
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+data <- read.csv("CEdata.csv")
+```
+
+```{r}
+qplot(data$Income,
+      geom="histogram",
+      binwidth = 10000,  
+      main = "Histogram for Total Income Last Year", 
+      xlab = "Income",  
+      fill=I("yellow"), 
+      col=I("blue"))
+```
+
+```{r}
+data$logIncome <- log(data$Income)
+qplot(data$logIncome,
+      geom="histogram",
+      binwidth = 0.1,  
+      main = "Histogram for Log Total Income Last Year", 
+      xlab = "Log Income",  
+      fill=I("yellow"), 
+      col=I("blue"))
+```
+
+```{r}
+mean(data$logIncome)
+sd(data$logIncome)
+```
+
+```{r}
+qplot(data$Expenditure,
+      geom="histogram",
+      binwidth = 1000,  
+      main = "Histogram for Total Expenditure Last Year", 
+      xlab = "Expenditure",  
+      fill=I("yellow"), 
+      col=I("blue"))
+```
+
+```{r}
+data$logEx <- log(data$Expenditure)
+qplot(data$logEx,
+      geom="histogram",
+      binwidth = 0.1,  
+      main = "Histogram for Log Total Expenditure Last Year", 
+      xlab = "Log Expenditure",  
+      fill=I("yellow"), 
+      col=I("blue"))
+```
+
+```{r}
+mean(data$logEx)
+sd(data$logEx)
+```
+
+```{r}
+URdata <- c()
+for (i in 1:2){
+  URdata[i] <- sum(data$UrbanRural==i)
+}
+lbls <- c("Urban", "Rural")
+df <- data.frame(
+  group = lbls,
+  value = URdata
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+RCdata <- c()
+for (i in 1:6){
+  RCdata[i] <- sum(data$Race==i)
+}
+lbls <- c("White", "Black", "Native American", "Asian", "Pacific Islander", "Multi-Race")
+df <- data.frame(
+  group = lbls,
+  value = RCdata
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+(a) Among the four variables, can you come up with an order of most sensitive to least sensitive? Explain your decision making process.
+
+Income (position/occupation, especially for those in the upper class) - Urban/Rural (region/residence, especially for those living in the rural areas) - Expenditure (can be sensitive if one's consumption records are available online, say micro-celebrities) - Race (can be sensitive if one belongs to one of the minority races)
+
+Income could provide inference on someone's position/occupation, Urban/Rural status 
+
+(b) If you decide to use Bayesian synthesis models to generate synthetic values for Income, what models would you use, and why? Please write out the model explicitly.
+
+logIncome ~ Normal(10.6,1.15)
+
+logIncome ~ Normal(u,sigma)
+u ~ Normal(10,1)
+sigma ~ Gamma(1,1) or sigma ~ Normal(1.15,0.1)
+
+(c) If you decide to use Bayesian synthesis models to generate synthetic values for Expenditure, what models would you use, and why? Please write out the model explicitly.
+
+logExpenditure ~ Normal(8.8, 0.87)
+
+logExpenditure ~ Normal(u,sigma)
+u ~ Normal(9,1)
+sigma ~ Gamma(1,1) or sigma ~ Normal(0.87,0.1)
+
+(d) If you decide to use Bayesian synthesis models to generate synthetic values for Rural, what models would you use, and why? Please write out the model explicitly.
+
+p(Urban) ~ Beta(943, 51)
+
+p(Urban) ~ Beta(a,994-a)
+a ~ Normal(900,20)
+URstatus ~ Bernoulli(p(Urban))
+
+(e) If you decide to use Bayesian synthesis models to generate synthetic values for Race, what models would you use, and why? Please write out the model explicitly.
+
+```{r}
+RCdata
+```
+
+p(White) ~ Beta(816, 178)
+White/Minority ~ Bernoulli(p(White))
+
+p(Asian) ~ Beta(109, 69)
+Asian/Minority ~ Bernoulli(p(Asian))
+
+We have minority versus white status, and for this minority status, take out the race that takes up the largest portion and labels that as the majority status, and run the process again. 
+
+(f) What if you think both Income and Rural are sensitive and you decide to generate synthetic values for both of them, what kind of approaches can you come up with? If you can, write out the model explicitly.
+
+```{r}
+Model <- lm(logIncome ~ as.factor(UrbanRural), data=data)
+summary(Model)
+```
+
+```{r}
+Model2 <- lm(Income ~ as.factor(UrbanRural), data=data)
+summary(Model2)
+```
