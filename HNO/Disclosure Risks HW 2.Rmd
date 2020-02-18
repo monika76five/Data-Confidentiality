@@ -1,0 +1,148 @@
+---
+title: "IPUMS Economic data"
+author: "Henrik Olsson"
+date: "February 18, 2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+subtitle: MATH 301 Data Confidentiality
+---
+
+```{r}
+library(readr)
+library(LearnBayes)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(imputeTS)
+ipumsdata<- read.csv("usa_00010.csv")
+head(ipumsdata, 10)
+```
+
+
+
+The IPUMS data holds U.S. census microdata for social, economic, and health research. The dataset only looks at the year 2018. I extracted a total of 12 variables. There a total of approximately 3 million data points. 
+Year, sample, IPUMS sample identifier, household serial number, and Census Buereau household serial number will not be modified and are in the dataset for reference.
+Sex (binary), race (categorical), healthcare coverage (binary), school attendance (categorical), field of degree (categorical), employment status (categorical), and total salary/wage income (continuous).
+There are also variables labeled RACED, DEFIELDD, and EMPSTATD, which are more detailed versions of race, degree of field, and empoyment status. We will choose to ignore these variables in this project. 
+
+We will look at potential disclosure risks in the original data. First, we will clean up the data and remove any observations that are missing. 
+
+```{r include=FALSE}
+## Remove missing observations 
+na.remove(ipumsdata$RACE)
+na.remove(ipumsdata$DEGFIELD)
+na.remove(ipumsdata$HCOVANY)
+na.remove(ipumsdata$SEX)
+na.remove(ipumsdata$SCHOOL)
+na.remove(ipumsdata$EMPSTAT)
+na.remove(ipumsdata$INCWAGE)
+```
+
+
+Next, we will assess which variables are the most sensitive. 
+
+```{r}
+## Salary income
+ipumsdata$logINC <-log(ipumsdata$INCWAGE)
+hist(ipumsdata$INCWAGE)
+hist(ipumsdata$logINC)
+```
+
+The most sensitive variable is Income, which is a continuous variable. If an intruder were to know one's income then they can obtain the person's information with much greater probability than if they had access to another variable. 
+
+```{r}
+## Race
+hist(ipumsdata$RACE)
+## Field of degree
+hist(ipumsdata$DEGFIELD)
+## Employment Status
+hist(ipumsdata$EMPSTAT)
+## Sex
+hist(ipumsdata$SEX)
+## Healthcare coverage
+hist(ipumsdata$HCOVANY)
+## School attendance
+hist(ipumsdata$SCHOOL)
+```
+
+Since field of degree contains 64 categories, this variable is the second most sensitive variable. The next most sensitive is Race, with a total of 9 categories. 
+
+The least sensitive varaible is Sex due to the bimodal distribution shape of the binary variable.  
+
+
+##### Type 1: Identification disclosure 
+```{r}
+## SAMPLE
+NeighborSet <- ipumsdata %>% 
+  filter(SEX == 1 & RACE == 1 & SCHOOL == 1)
+dim(NeighborSet)
+## Random guess which one is your neighbor- risk as a probability
+1/dim(NeighborSet)[1]
+```
+
+The biggest potential disclosure risk will be with regards to Income. Thus, we will test to see what relationships we want to preserve. The income is top coded at the 99.5th percentile in State.
+
+```{r}
+## Income at $401,000
+NeighborSet <- ipumsdata %>% 
+  filter(INCWAGE == 401000)
+dim(NeighborSet)
+## Random guess which one is your neighbor- risk as a probability
+1/dim(NeighborSet)[1]
+
+## Income at $402,000
+NeighborSet2 <- ipumsdata %>% 
+  filter(INCWAGE == 402000)
+dim(NeighborSet2)
+## Random guess which one is your neighbor- risk as a probability
+1/dim(NeighborSet2)[1]
+```
+
+By randomizing potential salary income values, an intruder can determine the individual if they knew their income was $401,000. 
+However, if the intruder was $1,000 off by mistake, they would have to search through a total of 119 possible data points, with a 0.8% probability of finding the right individual. 
+
+```{r}
+## Relationship between Male sex, Japanese race, No Health insurance, Unemployed, and Not in school 
+NeighborSet <- ipumsdata %>% 
+  filter(SEX == 1 & RACE == 5 & SCHOOL == 1 & HCOVANY == 1 & EMPSTAT == 2)
+dim(NeighborSet)
+## Random guess which one is your neighbor- risk as a probability
+1/dim(NeighborSet)[1]
+```
+
+If an intruder were to know that the individual is a Japanese male who is unemployed, not insured, and not in school. Then they would have a 10% probability of identifying the person. This relationship does not include knowledge of the two most sensitive variables, income and field of degree.
+
+```{r}
+## Degree of field: Nuclear and Biological Technologies and Native American race
+NeighborSet <- ipumsdata %>% 
+  filter(DEGFIELD == 51 & RACE == 3)
+dim(NeighborSet)
+## Random guess which one is your neighbor- risk as a probability
+1/dim(NeighborSet)[1]
+```
+
+If an intruder were to know that an individual's degree of field is in Nuclear and Biological Technologies, and that they were from a Native American descent then they would be able to identify the individual. 
+
+```{r}
+## Henrik profile disclosure risk
+HenrikSet <- ipumsdata %>% 
+  filter(SEX == 1 & DEGFIELD == 37 & RACE == 8 & EMPSTAT == 1 & HCOVANY == 2 & SCHOOL == 2)
+dim(HenrikSet)
+## Random guess which one is your neighbor- risk as a probability
+1/dim(HenrikSet)[1]
+```
+
+For fun, lets assume I was in the IPUMS dataset. Of the over 3 million samples, a total of 18 individuals have the same characteristic as I do. This is excluding income, which will certainly give away the individual's whole profile.
+
+
+##### Type 2: Attribute disclosure 
+
+An intruder could correctly infer the true value of one unknown variable/attribute of an individual. We are not looking in-depth at attribute disclosure, but just starting the conversation. 
+
+```{r}
+## For a uniquely identified person:
+NeighborSet %>% count(HCOVANY) %>% group_by(HCOVANY)
+```
+

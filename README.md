@@ -29,7 +29,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
 
 
-## Bayesian Synthesis Models part 1, Tuesday 2/4/2020
+## Bayesian Synthesis Models \# 1, Tuesday 2/4/2020
 
 ### To-do (done before class on 2/4)
 
@@ -50,7 +50,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
 
 
-## Bayesian Synthesis Models part 2, Tuesday 2/11/2020
+## Bayesian Synthesis Models \# 2, Tuesday 2/11/2020
 
 ### To-do (done before class on 2/11)
 
@@ -70,5 +70,29 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     6. How did they evaluate the disclosure risks? Can you think of any other disclosure risks measures?
     
 4. Start thinking about your course project! What public use datasets that you think are risky? It might be a good idea to find appropriate datasets as soon as you can.
+
+**Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
+
+
+## Methods for Utility Evaluation, Tuesday 2/18/2020
+
+### To-do (done before class on 2/18)
+
+1. Read ```Kinney et al (2011)``` in the References folder, and prepare answers to the following questions.
+    1. What are the synthesized and un-synthesized variables in the SynLBD?
+    2. What approaches did they take when they have more than 1 variables deemed sensitive and to be synthesized?
+    3. What Bayesian synthesis model(s) did they use? Details of the synthesis models are in ```Kinney et al (2011) appendix```.
+    4. How many synthetic datasets did they generate?
+    5. How did they evaluate the utility of the synthetic datasets? Can you think of any other utility measures?
+    6. How did they evaluate the disclosure risks? Can you think of any other disclosure risks measures?
+    
+2. Read ```Woo et al (2009)``` in the References folder, and prepare answers to the following questions.
+    1. What are the pros and cons of analysis-specific measures?
+    2. What are the pros and cons of global measures?
+    3. What are the similaries between the proposed global measures?
+    4. <ins>Evaluate the global utility measures of your synthesized ```log(Income)``` from your Bayesian synthesis model for the CE sample.</ins>
+    5. Which global measure do you think works the best? The least? Give explanations.
+    
+3. <ins>Find one or more datasets and **demonstrate potential disclosure risks in the original data**. You can start with identification disclosure. If you are working with continuous variables, be creative about how you calculate the identification disclosure risks.</ins>
 
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
