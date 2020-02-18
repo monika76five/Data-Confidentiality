@@ -2,7 +2,9 @@
 title: "DisclosureRisk"
 author: "Kevin Ros"
 date: "2/16/2020"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -20,22 +22,41 @@ The NIHS Person data set is :
 
 NHIS collects data on both adult and children’s mental health and mental disorders. For adults, this includes serious psychological distress and feelings of depression and anxiety.  For children, this includes the presence of  attention deficit/hyperactivity disorder and autism spectrum disorder.  The NHIS also examines mental health service use and whether individuals have unmet mental health needs. Questions about recent anxiety or frequent stress have been included in previous years.
 
+Note that much of this data is sensitive, as it pertains to health, which may be protected by HIPAA.
+
+
+Two things I learned from this dataset/exercise:
+
+(1) Many entries have NA for multiple variables, so the knowledge (or lack thereof) of a characteristic of someone may significantly increase disclosure / identification risk. 
+
+(2) The existance of "Universes" where certain variables are bounded to the value of another, broader variable. See PDF!
+
+
+
+
+
+The number of male (1) and female(2) records are approx. equal, so not much identification disclosure risk.
 ```{r}
 nrow(data[data$SEX == 1,]) # Male
 nrow(data[data$SEX == 2,]) # Female
 ```
-
+Looks like ~35000 out of ~72000 do not have records for yearly earnings.
 ```{r}
 ggplot(data, aes(x = data$ERNYR_P)) + geom_histogram()
 ```
+
+WRKHRS2 records the number of hours a participant has worked in the past week. 40 is the overwhelming response, but anything other than 40 is a potential disclosure risk. 
+Additionally, ~37000 participants did not answer this question.
 ```{r}
 ggplot(data, aes(x = data$WRKHRS2)) + geom_histogram()
 ```
+
+The age of everyone in the survey. It seems like all participants answered this quesiton. 
 ```{r}
 ggplot(data, aes(x = data$AGE_P)) + geom_histogram()
 ```
 
-
+The races of everyone in the survey. 
 ```{r}
 ggplot(data, aes(x = data$RACERPI2)) + geom_histogram()
 #01 White only
@@ -47,18 +68,35 @@ ggplot(data, aes(x = data$RACERPI2)) + geom_histogram()
 
 ```
 
-
+"Has the person ever been married?" where 1 = yes, 2 = no
+Universe = COHAB1 = 1, "What is the person's current legal marital status?" 
+1 Married
+2 Widowed
+3 Divorced
+4 Separated
+7 Refused
+8 Not ascertained
+9 Don't know
 ```{r}
 ggplot(data, aes(x = data$COHAB1)) + geom_histogram()
 ggplot(data, aes(x = data$COHAB2)) + geom_histogram()
 
 ```
+Universe:
+(AGE GE '018' and AGE not IN ('997','999')) and (PLAADL ='1' or PLAIADL ='1' or PLAWKNOW ='1' or
+PLAWKLIM ='1' or PLAWALK ='1' or PLAREMEM ='1' or PLIMANY ='1')
+functional limitation; nervous system; sensory organ condition
+Nervous system/sensory organ condition causes limitation
 
+1 Mentioned
+2 Not mentioned
+7 Refused
+8 Not ascertained
+9 Don't know
 ```{r}
 ggplot(data, aes(x = data$LAHCA29_)) + geom_histogram()
 
 ```
-
 
 
 
