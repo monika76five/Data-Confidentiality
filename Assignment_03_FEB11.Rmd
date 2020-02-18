@@ -1,0 +1,189 @@
+---
+title: "Assignment #03"
+author: "Yitong Wu"
+date: "February 18, 2020"
+output: html_notebook
+---
+
+(a) Use your own synthesis model to synthesize m = 1 synthetic dataset for the CE sample.
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(fastDummies)
+knitr::opts_chunk$set(echo = TRUE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+require(runjags)
+require(coda)
+```
+
+```{r}
+data <- read.csv("CEdata.csv")
+data$Rural = fastDummies::dummy_cols(data$UrbanRural)[,names(fastDummies::dummy_cols(data$UrbanRural)) == ".data_2"]
+data$Race_Black = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_2"]
+data$Race_NA = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_3"]
+data$Race_Asian = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_4"]
+data$Race_PI = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_5"]
+data$Race_M = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_6"]
+data$logInc <- log(data$Income)
+```
+
+```{r message = FALSE, size = "footnotesize"}
+modelString <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_rural[i] +
+beta2*x_race_B[i] + beta3*x_race_N[i] +
+beta4*x_race_A[i] + beta5*x_race_P[i] + beta6*x_race_M[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+```
+
+```{r}
+y = as.vector(data$logInc)
+x_rural = as.vector(data$Rural)
+x_race_B = as.vector(data$Race_Black)
+x_race_N = as.vector(data$Race_NA)
+x_race_A = as.vector(data$Race_Asian)
+x_race_P = as.vector(data$Race_PI)
+x_race_M = as.vector(data$Race_M)
+N = length(y)  
+```
+
+```{r message = FALSE, size = "footnotesize"}
+the_data <- list("y" = y, 
+                 "x_rural" = x_rural, "x_race_B" = x_race_B,
+                 "x_race_N" = x_race_N, "x_race_A" = x_race_A,
+                 "x_race_P" = x_race_P, "x_race_M" = x_race_M,
+                 "N" = N,
+                 "mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+                 "mu6" = 0, "g6" = 1, 
+                 "a" = 1, "b" = 1)
+```
+
+```{r message = FALSE, size = "footnotesize"}
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+```
+
+```{r message = FALSE, size = "footnotesize", results = 'hide'}
+posterior_MLR <- run.jags(modelString,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "beta4", "beta5",
+                                  "beta6", "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+```
+
+```{r message=FALSE, size = "footnotesize"}
+post <- as.mcmc(posterior_MLR)
+```
+
+```{r message=FALSE, size = "footnotesize"}
+synthesize <- function(X_rural, X_RB, X_RN, X_RA, X_RP, X_RM, index, n){
+  mean_Y <- post[index, "beta0"] +  X_rural * post[index, "beta1"] + X_RB * post[index, "beta2"] + X_RN * post[index, "beta3"] + X_RA * post[index, "beta4"] + X_RP * post[index, "beta5"] + X_RM * post[index, "beta6"]
+  synthetic_Y <- rnorm(n, mean_Y, post[index, "sigma"])
+  data.frame(synthetic_Y)
+}
+```
+
+```{r}
+n <- dim(data)[1]
+Syndata <- synthesize(data$Rural, data$Race_Black, data$Race_NA, data$Race_Asian, data$Race_PI, data$Race_M, 1, n)
+names(Syndata) <- c("SynlogInc")
+```
+
+(b) Make a scatter plot of the synthesized log(Income) against the original log(Income), and see what you find.
+```{r}
+Synthesis <- cbind(data$logInc, Syndata$SynlogInc)
+Synthesis <- data.frame(Synthesis)
+names(Synthesis) <- c("Orig", "Syn")
+```
+
+```{r}
+ggplot(Synthesis, aes(x=Orig, y=Syn)) + geom_point()
+```
+
+(b) Compare the mean and median of log(Income), in the original dataset and the confidential dataset. Are they close to each other?
+```{r}
+mean(Synthesis$Orig)
+median(Synthesis$Orig)
+mean(Synthesis$Syn)
+median(Synthesis$Syn)
+```
+
+(c) Compare the point estimate of the regression coefficients of log(Income) on log(Expenditure), in the original dataset and the confidential dataset. Are they close to each other?
+```{r}
+Synthesis <- cbind(Synthesis, log(data$Expenditure))
+names(Synthesis) <- c("Orig", "Syn", "Ex")
+model_orig <- lm(Orig ~ Ex, data=Synthesis)
+model_syn <- lm(Syn ~ Ex, data=Synthesis)
+summary(model_orig)
+summary(model_syn)
+```
+
+(d) Evaluate the global utility measures of your synthesized log(Income) from your Bayesian synthesis model for the CE sample.
+
+I. Propensity Score Measure
+```{r}
+original_data <- data.frame(data$logInc)
+original_data$T <- 0
+names(original_data) <- c("logInc", "T")
+synthesis_data <- data.frame(Synthesis$Syn)
+synthesis_data$T <- 1
+names(synthesis_data) <- c("logInc", "T")
+psm_data <- bind_rows(original_data, synthesis_data)
+psm_data$logInc <- round(psm_data$logInc, 1)
+psm_data$psm <- 0
+1+N/2
+```
+
+```{r}
+N <- length(psm_data$T)
+test <- psm_data %>% filter(T==1)
+for (i in 1:N) {
+  a <- psm_data$logInc[i]
+  score <- sum(test$logInc==a)
+  psm_data$psm[i] <- score
+}
+psm_data$pscore <- psm_data$psm/994
+```
+
+```{r}
+psm_ori <- psm_data %>% filter(T==0)
+psm_syn <- psm_data %>% filter(T==1)
+```
+
+```{r}
+ggplot(psm_ori, aes(x=pscore)) + geom_histogram(binwidth=.001)
+ggplot(psm_syn, aes(x=pscore)) + geom_histogram(binwidth=.001)
+```
+
