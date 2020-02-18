@@ -1,0 +1,42 @@
+---
+title: "NHISExploration"
+author: "Sarah Boese"
+date: "2/16/2020"
+output: html_document
+---
+```{r, message = FALSE}
+library(ProbBayes)
+library(dplyr)
+library(ggplot2)
+require(gridExtra)
+library(reshape)
+library(runjags)
+library(coda)
+library(tidyverse)
+library(fastDummies)
+crcblue <- "#2905a1"
+```
+
+I wnated to look into survey data pertaining to public health. I found the National Health Interview Suvey as an example. I don't beleive that any of the information here has been altered. However, some information can be left out for the protection of a survey participants privacy. For example, the only geographic information released about a participant is REGION which can take four arguments: NORTHEAST, MIDWEST, SOUTH, WEST. 
+```{r}
+NHISFamily <- read.csv("familyxx.csv")
+NHISPerson<- read.csv("personsx.csv")
+NHISSampleAdult<-read.csv("samadult.csv")
+```
+
+Each piece of data from the SampleAdult sample is unique. Here we can see this because $n_unique$ is equal to $number_rows$. We can attribute this phenomenon to the fineness of detail within the survey (the data has 742 variables). 
+```{r}
+n_unique <- n_distinct(NHISSampleAdult)
+n_unique
+number_rows<- nrow(NHISSampleAdult)
+number_rows
+```
+
+First, I wanted to see given certain information about demographics of participants in the survey if an intruder could find information about the health of specific participants. Here we have only two participants who identify as Native American, Mexican-American women from the south. Clearly, there is some high level of attribute disclosure risk inthis data. 
+```{r}
+AIAN<- NHISSampleAdult %>% 
+  filter(RACERPI2 == 1 & REGION==1 & SEX == 2 & HISPAN_I == 3)
+nrow(AIAN)
+```
+
+
