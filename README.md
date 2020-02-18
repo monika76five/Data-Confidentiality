@@ -74,7 +74,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
 
 
-## Methods for Utility Evaluation, Tuesday 2/18/2020
+## Methods for Utility Evaluation \#1, Tuesday 2/18/2020
 
 ### To-do (done before class on 2/18)
 
@@ -94,5 +94,26 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     5. Which global measure do you think works the best? The least? Give explanations.
     
 3. <ins>Find one or more datasets and **demonstrate potential disclosure risks in the original data**. You can start with identification disclosure. If you are working with continuous variables, be creative about how you calculate the identification disclosure risks.</ins>
+
+**Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
+
+
+## Methods for Utility Evaluation \#2, Tuesday 2/25/2020
+
+### To-do (done before class on 2/25)
+
+1. Read ```Woo et al (2009)``` in the References folder, and prepare answers to the following questions.
+    1. What are the pros and cons of analysis-specific measures?
+    2. What are the pros and cons of global measures?
+    3. What are the similaries between the proposed global measures?
+    4. <ins>Evaluate the global utility measures of your synthesized ```log(Income)``` from your Bayesian synthesis model for the CE sample.</ins>
+    5. Which global measure do you think works the best? The least? Give explanations.
+    
+2. <ins>Read ```Drechsler (2001) Chapter 7.1``` in the References folder, and prepare the following results.
+    1. Generate $m = 20$ synthetic datasets given your synthesis model for the CE sample.
+    2. Estimate a few analysis-specific utility measures, e.g. the mean and median of a continuous synthetic variable, the regression analysis coefficients, for each synthetic dataset.
+    3. Use the combining rules in ```Drechsler (2001) Chapter 7.1``` and create your final point estimate and confidence interval of the analysis-specific utility measures you calculated in Item 2 above.</ins>
+
+3. <ins>**Present your synthesis model(s) for your project dataset(s)**. Refer to the Bayesian Synthesis Models \#1 and \#2 lectures for different synthesis models we have covered.</ins>
 
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
