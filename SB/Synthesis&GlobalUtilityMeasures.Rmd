@@ -1,0 +1,259 @@
+---
+title: "SynthesisModel"
+author: "Sarah Boese"
+date: "2/6/2020"
+output: pdf_document
+---
+
+
+```{r, message = FALSE}
+library(ProbBayes)
+library(dplyr)
+library(ggplot2)
+require(gridExtra)
+library(reshape)
+library(runjags)
+library(coda)
+library(tidyverse)
+library(fastDummies)
+crcblue <- "#2905a1"
+```
+
+```{r}
+CESample <- read.csv("CEsample2.csv")
+```
+
+I decided that I wanted to use all variables within CESampe logExpenditure, UrbanRural, Race) as estimators for logIncome. Thus, I used a Multilinear regression model in which I scaled Log Income and Log Expenditure by centering at 0 and dividing by standard deviation. I use the following MLR model (where * denotes a standardized continuous variable): 
+
+\begin{eqnarray}
+Y_i^* \mid \beta_0, \beta_1, \cdots, \beta_7, \sigma, \mathbf{x}_i^* \overset{ind}{\sim} \textrm{Normal}(\beta_0 &+& \beta_1 x^*_{i, expenditure} + \beta_2 x_{i, rural} \nonumber \\
+&+& \beta_3 x_{i, race_B} +  \beta_4 x_{i, race_N} \nonumber \\
+&+& \beta_5 x_{i, race_A} + \beta_6 x_{i, race_P} \nonumber \\
+&+& \beta_7 x_{i, race_M}, \sigma). \nonumber \\
+\end{eqnarray}
+
+
+```{r}
+CESample <- CESample %>%
+  mutate(LogTotalIncome = log(TotalIncomeLastYear))
+CESample <- CESample %>%
+  mutate(LogTotalExp = log(TotalExpLastQ))
+```
+
+
+```{r message = FALSE}
+CESample$Log_TotalExpSTD <- scale(CESample$LogTotalExp)
+CESample$Log_TotalIncomeSTD <- scale(CESample$LogTotalIncome)
+## create indictor variable for Rural
+CESample$Rural = fastDummies::dummy_cols(CESample$UrbanRural)[,names(fastDummies::dummy_cols(CESample$UrbanRural))
+ == ".data_2"]
+```
+
+```{r message = FALSE}
+## create indicator variables for Black (2), Native American (3), 
+## Asian (4), Pacific Islander (5), and Multi-race (6)
+CESample$Race_Black = fastDummies::dummy_cols(CESample$Race)[,names(fastDummies::dummy_cols(CESample$Race)) == ".data_2"]
+CESample$Race_NA = fastDummies::dummy_cols(CESample$Race)[,names(fastDummies::dummy_cols(CESample$Race)) == ".data_3"]
+CESample$Race_Asian = fastDummies::dummy_cols(CESample$Race)[,names(fastDummies::dummy_cols(CESample$Race)) == ".data_4"]
+CESample$Race_PI = fastDummies::dummy_cols(CESample$Race)[,names(fastDummies::dummy_cols(CESample$Race)) == ".data_5"]
+CESample$Race_M = fastDummies::dummy_cols(CESample$Race)[,names(fastDummies::dummy_cols(CESample$Race)) == ".data_6"]
+```
+
+```{r message = FALSE}
+modelString <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_exp[i] + beta2*x_rural[i] +
+beta3*x_race_B[i] + beta4*x_race_N[i] +
+beta5*x_race_A[i] + beta6*x_race_P[i] +
+beta7*x_race_M[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+beta7 ~ dnorm(mu7, g7)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+```
+
+- Pass the data and hyperparameter values to JAGS:
+
+```{r message = FALSE}
+y = as.vector(CESample$LogTotalIncome)
+x_exp = as.vector(CESample$LogTotalExp)
+x_rural = as.vector(CESample$Rural)
+x_race_B = as.vector(CESample$Race_Black)
+x_race_N = as.vector(CESample$Race_NA)
+x_race_A = as.vector(CESample$Race_Asian)
+x_race_P = as.vector(CESample$Race_PI)
+x_race_M = as.vector(CESample$Race_M)
+N = length(y)  # Compute the number of observations
+```
+
+- Pass the data and hyperparameter values to JAGS:
+
+```{r message = FALSE}
+the_data <- list("y" = y, "x_exp" = x_exp,
+                 "x_rural" = x_rural, "x_race_B" = x_race_B,
+                 "x_race_N" = x_race_N, "x_race_A" = x_race_A,
+                 "x_race_P" = x_race_P, "x_race_M" = x_race_M,
+                 "N" = N,
+                 "mu0" = 0, "g0" = 0.0001, "mu1" = 0, "g1" = 0.0001,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+                 "mu6" = 0, "g6" = 1, "mu7" = 0, "g7" = 1,
+                 "a" = 1, "b" = 1)
+```
+
+- Pass the data and hyperparameter values to JAGS:
+
+```{r message = FALSE, size = "footnotesize"}
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+```
+
+- Run the JAGS code for this model:
+
+```{r message = FALSE}
+posterior_MLR <- run.jags(modelString,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "beta4", "beta5",
+                                  "beta6", "beta7", "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 50,
+                      inits = initsfunction)
+```
+
+
+## JAGS output for the MLR model
+
+```{r message = FALSE, warning = FALSE}
+summary(posterior_MLR)
+```
+
+```{r}
+post_MLR <- as.mcmc(posterior_MLR)
+```
+
+```{r}
+synthesize <- function(X, index, n){
+  synth_Y=vector(mode="numeric", length = n)
+  for(i in 1:n){
+  mean_Y <- post_MLR[index, "beta0"] + X[i,1] * post_MLR[index, "beta1"] + X[i,2] *post_MLR[index, "beta2"] +
+    X[i,3]*post_MLR[index, "beta3"] + X[i,4] *post_MLR[index, "beta4"] + X[i,5] *post_MLR[index, "beta5"] + 
+    X[i,6]*post_MLR[index, "beta6"] + X[i,7] *post_MLR[index, "beta7"] 
+  synth_Y[i]<- rnorm(1, mean_Y, post_MLR[index, "sigma"])
+  }
+  synthetic_frame<-as.data.frame(X, row.names = NULL, optional = FALSE)
+  synthetic_frame<-add_column(synthetic_frame, synth_Y)
+  return(synthetic_frame)
+}
+```
+
+```{r}
+n <- dim(CESample)[1]
+matrix_of_X<-matrix(nrow=n, ncol=7)
+matrix_of_X[,1]<-as.vector(CESample$LogTotalExp)
+matrix_of_X[,2]<-as.vector(CESample$Rural)
+matrix_of_X[,3]<-as.vector(CESample$Race_Black)
+matrix_of_X[,4]<-as.vector(CESample$Race_NA)
+matrix_of_X[,5]<-as.vector(CESample$Race_Asian)
+matrix_of_X[,6]<-as.vector(CESample$Race_PI)
+matrix_of_X[,7]<-as.vector(CESample$Race_M)
+synthetic_new <- synthesize(matrix_of_X, 1, n)
+names(synthetic_new) <- c("logExpenditure", "Rural", "Black", "Native American", "Asian", "Pacific Islander", "Mixed", "logIncome_syn")
+```
+
+```{r}
+SyntheticData <- data.frame(synthetic_new$logIncome_syn, CESample$LogTotalIncome)
+names(SyntheticData) = c("SyntheticLogIncome", "LogTotalIncome")
+```
+
+```{r}
+data<- melt(SyntheticData)
+ggplot(data,aes(x=value, fill=variable)) + geom_density(alpha=0.25)
+```
+Here we can see the effect our model has on the data. The distribution curve, while similar to the data, looks to follow a normal curve more faithfully. 
+
+
+```{r}
+ggplot(SyntheticData, aes(x=SyntheticLogIncome, y=LogTotalIncome)) + 
+  geom_point()
+```
+
+```{r}
+summary = summarize_all(SyntheticData, .funs=c(mean, median))
+names(summary) = c("SyntheticLogIncomeMean", "SyntheticLogIncomeMedian","LogTotalIncomeMean", "LogTotalIncomeMedian")
+summary
+```
+These look farily close to each other to me. 
+
+
+To run the propensity score measure, I must first stack my synthetic data and the original data with variable $T$ as indicator for synthetic data. Here, T == 1 if LogIncome is synthetic. 
+```{r}
+synthetic_new_T<-data.frame(synthetic_new$logIncome_syn, integer(length=994) +1, integer(length=994))
+names(synthetic_new_T) = c("LogIncome", "T", "T_inv")
+
+original_T<-data.frame(CESample$LogTotalIncome, integer(length=994), integer(length=994)+1)
+names(original_T)= c("LogIncome", "T", "T_inv")
+
+merged_T<- bind_rows(synthetic_new_T, original_T)
+```
+
+Now I can run a logistic regression on the stacked data. I could not figure out how to run the models described in Woo et. all, so here I am using the glm function to run a simpler logistic regression: $$log\bigg(\frac{p_i}{1-p_i}\bigg) = \beta_0+\beta_1z_i+\beta_2z_i^2$$. Here the variable $U_p$ is the propensity score given the simple legistic regression. 
+```{r}
+mylogit <- glm(T ~ LogIncome + (LogIncome^2), data = merged_T, family = "binomial")
+coefs<-coef(mylogit)
+merged_T<-mutate(merged_T, p_hat=1/(1+exp(-1*(coefs[1]+coefs[2]*LogIncome))))
+merged_T<-mutate(merged_T, p_hat_c2=(p_hat-.5)^2)
+U_p<-(1/(2*N))*sum(merged_T$p_hat_c2)
+U_p
+```
+
+To preform cluster analysis, I utilize the kmeans function. Here I wasn't sure what to use as the weight, but I think withinss makes sense. I wrote a funciton called cluster_func with parameter $G$, the number of desired clusters. I ran the cluster analysis with $5,10$ and $20$ clusters, I was not sure how to meaningfully pick the value for $G$. 
+```{r, message=FALSE}
+cluster_func<- function(G){
+  fit <- kmeans(as.data.frame(merged_T$LogIncome, merged_T$T_inv), G) # 5 cluster solution
+  size<-fit$size
+  weight<-fit$withinss
+  cluster_data<- data.frame(merged_T, fit$cluster)
+  ujo_data<- cluster_data %>% 
+    group_by(fit.cluster) %>%
+    summarize(sum(T_inv))
+  ujo<-as.vector(ujo_data$`sum(T_inv)`)
+  c<-1/2
+  U_c<-0
+  for(i in 1: G){
+     U_c=U_c+weight[i]*(ujo[i]/size[i]-c)
+  }
+  U_c=U_c*(1/G)
+  return(U_c)
+}
+
+U_c5<-cluster_func(5)
+U_c5
+U_c10<-cluster_func(10)
+U_c10
+U_c20<-cluster_func(20)
+U_c20
+```
+
+I couldn't quite figure out how to program the last utility measure. There is function in the $\{stats\}$ package named $ecdf$ which calculate empirical cumulative distribution. However, I believe that the algorithim described in Woo et. all is more complicated than the one used in this function.  
+
