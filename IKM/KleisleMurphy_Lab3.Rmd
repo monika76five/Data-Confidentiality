@@ -1,0 +1,507 @@
+---
+title: "Untitled"
+author: "Isaac Kleisle-Murphy"
+date: "February 17, 2020"
+output: pdf_document
+---
+
+# 1.)
+
+## i.)
+According to the paper, synthesized variable fields included `Payroll`, `Employment`, `Multiunit`, `Firstyear`, `Lastyear`, while `SIC` was left as is. Further, `County` (and by extension, `State`) was simply not released, while `Year` and `ID` were created and released. The paper also notes the existence of additional, confidential variables that were not used to generate this synthetic dataset, but may be used in future sets.
+
+## ii/iii.)
+In order to simulate the multiple variables in play, Kinney et al. built a nested series of models -- i.e. they imputed "outwards" from the categorical targets to the continuous targets. Importantly, the output of one synthesis could be an input for the next, thus giving the "nested" structure described above. More specifically, this structure involved
+
+1.) Model category $Firstyear | County, SIC\sim Multinom$ with (flat) dirichlet priors, i.e. the multinomial-dirichlet conjugacy.
+
+2.) Model category $Lastyear |Firstyear, County, SIC\sim Multinom$ with (flat) dirichlet priors, i.e. the multinomial-dirichlet conjugacy. Note that the output of 1 is an input here. 
+
+3.) Model category $Multiunit | Lastyear,Firstyear, County, SIC\sim Multinom$ with (flat) dirichlet priors, i.e. the multinomial-dirichlet conjugacy. Here, the outputs of 1 and 2 are inputs. 
+
+4.) Model continuous $Employment | Multiunit, Lastyear,Firstyear, County, SIC$ via a hybrid AR1/MLR model, with an added KDE smoothing transformation at the end. Note that the outputs of 1-3 were, in addition to the AR1's lag component, covariates in this linear regression.
+
+5.) Model continuous $Payroll | Employment, Multiunit, Lastyear,Firstyear, County, SIC$ via a hybrid AR1/MLR model, with an added KDE smoothing transformation at the end. Note that the outputs of 1-4 were, in addition to the AR1's lag component, covariates in this linear regression.
+
+As shown above, this model was built "outwards" from the categorical fits above. In this way, they were able to synthesize multiple variables at once. Notably, this puts principal importance on models 1-2, as the remainder of the models rely/are conditional on their accuracy. 
+
+## iv.)
+As noted on page 365, they generated a single synthetic entry for over 21 million records. So it appears that $m=1.$
+
+##v.)
+Annual comparisons of each synthetic marginal values/summary stats with the true marginal values/summary stats was one way the authors measured utility: for instance, they remarked that between 1976 and 2000, synthetic `Employment` and true `Employment` had an average 1.3% discrepancy (think MAE, converted to percentage) over those years, while synthetic `Payroll` and true `Payroll` had an average 8% discrepancy over those years. Further, the authors note that within non-synthesized categories of location and industry, employments, establishments, and payrolls generally aligned with the true summary statistics in these categories. This finding appears to have been made via visual inspection/comparison of group-wise scatterplots for these variables (similar to that in question 2).
+
+Further, the authors also corroborated the accuracy of their synthesis by comparing transformations of the synthetic data with transformations of the true data. For instance, job creation/destruction metrics can be backed out of year-to-year employment figures, so the authors calculated these measures for the true data and then calculated the same measures for their own data. To their credit, these transformations aligned closely, although the synthetic data consistently showed a lower job creation rate than the true data. In a similar manner, the authors also plugged both the synthesic data and the true data into a pre-fit linear economic growth regression, before comparing the performances of the two. Again, the synthetic data exhibited similar trends to that of the true data, when plugged into the model, further illustrating the robustness of the synthetic data. 
+
+Though their analysis of utility/accuracy was fairly exhaustive, other utility measures could have included:
+
+ - correlations between the various transformations of the two datasets (i.e. job flow metrics, the growth regression), as well as correlations for the plots that were subject to visual inspection.
+ - MAE estimates not just for marginal rates (i.e. one variable in a vacuum), but perhaps MAEs/percentage discrepancies when faceted over one or two additional covariates. This reporting would, of course, be subject to it not disclosing individual entries.
+ - A brief case study in how small perturbations in the early components of the nested model (such as `Firstyear`, `Lastyear`), that is those outputs most foundational to the overall model, would have affected accuracy. This could have spoken to the structural "stability" of the model. 
+
+##vi.)
+
+Due to a paucity of matching algorithms/appropriate software, the authors could not have a computer comb through the synthetic data and pick out individuals. As such, the authors analyzed disclosure risks in the following ways. First, they analyzed the probability that true birth/death years (`Firstyear`, `Lastyear`, respectively) matched those of the synthetic -- in most cases, this probability was low, as the synthetic value was close but not exactly equal. This alone, they argue, "confounded" reidentification substantially.
+
+Second, the authors also point to the KDE transform of the continuous variables as an additional buffer against reidentification -- that is, a single vector of covariates cannot be "tracked" through the data, as the smoother obfuscates this vector's potential uniqueness. 
+
+Third, the authors also note that while the overall shape of the synthetic data matches that of the true data, correlations between the value of each entry are minimal. This also speaks to limited disclosure risks. 
+
+Fourth, as discussed on the authors found that outliers in the true data rarely align with the outliers in the synthetic data: they found that in fewer than 5% of cases, the maximum synthetic employment value corresponded to the maximum true employment value. 
+
+Fifth, the authors applied more complex algorithms, which compared year-to-year transition probabilities, to see if year-to-year behavior in the synthetic dataset aligned with year-to-year behavior in the true dataset. It did not -- in fact, even if the intruder knew pretty much everything about the true and synthetic data, they might still have trouble.
+
+This disclosure risk analysis seemed pretty robust to me, and with little knowledge of the field, I don't have too many additional disclosure risk tests to add. However, I think there is one non-mathematical check that would be worthwhile: take the synthetic data to the accounting departments/C-Suites of the 10-20 most "vulnerable" companies (provided they can be contacted), and see if they can identify themselves in the synthetic data. If most cannot, then identities are likely secure. 
+
+
+
+#2.)
+
+### i.)
+As the authors briefly describe, analysis-specific measures have their pros and cons. Among the pros: they lend themselves well to particularized and detailed analyses, allowing statisticians to "get in the weeds" of whether a masked data set really resembles the true data with regard to some property. However, while this is true for those particularized an detailed analyses, it may not be helpful -- Woo notes it may even be harmful -- for other analyses. So if there's one deeply-nuanced aspect of a masked data set that requires analysis, analysis-specific measures may be one's best bet.
+
+### ii.)
+Conversely, global utility measures are better for broader analyses; generally, they tend to focus on comparison summary statistics/parameter estimates across the entire synthetic and true data sets. As Woo characterizes, they are "broad yet blunt," reporting on the general distributional trends/similarities across data sets. Thus, for the more 10,000 foot level analysis of a masked data set's utility -- i.e. whether it generally obfuscates identities, reflects true distributions, etc. The downside here is that this broader analysis may overlook nuances in the data, such as poorly preserved relationships between subcategories of the data. 
+
+### iii.)
+Fundamental similarities between the proposed measures include the following:
+- all rely on some pseudo-classification function (logistic regression, clustering, or a true/false less than) that attempts to take a row of the merged data and position it (whether in euclidian space, classification probability, or on a number line) in relation to both masked and true observations
+- Under these metrics, these pseudo-classification functions should have a difficult time discerning the differences between unmasked and masked entries in the merged dataset, and should accordingly position them in an integrated manner (i.e. it can't tell the difference between masked and unmasked). In other words equal probability of classification and/or placement is a good thing.
+- All are fairly simple in their computation. 
+
+### iv.)
+Before applying any of Woo's utility measures, I recreate my (admittedly poor) synthetic dataset, as proffered in Lab 2. This code has been directly cut/pasted from my Lab 2 submission. 
+
+
+```{r}
+suppressMessages(require(dplyr))
+suppressMessages(require(ggplot2))
+suppressMessages(require(runjags))
+suppressMessages(require(coda))
+suppressMessages(require(tidyr))
+suppressMessages(require(fastDummies))
+options(warn = -1)
+setwd("~/Documents/Swat_2020/Data_Privacy/Data-Confidentiality/datasets")
+
+CEsample = read.csv("CEsample.csv")%>%
+  mutate(logInc = log(TotalIncomeLastYear),
+         logExp = log(TotalExpLastQ))
+
+
+the_data = list("logInc" = CEsample$logInc,
+                "logExp" = CEsample$logExp,
+                "r" = CEsample$Race,
+                "R" = max(CEsample$Race),
+                "u" = CEsample$UrbanRural,
+                "U" = max(CEsample$UrbanRural),
+                "N" = nrow(CEsample),
+                "mu_b0" = 0,
+                "mu_b1" = 0,
+                "prec_b0" = 1,
+                "prec_b1" = 1
+                )
+
+
+the_formula = "
+
+model{
+
+#model
+for (i in 1:N){
+  logInc[i] ~ dnorm(B_0[r[i], u[i]] + B_1[r[i], u[i]]*logExp[i], inv_sigma_sq[r[i]])
+}
+
+#priors
+for (rc in 1:R){
+  for (ur in 1:U){
+    B_0[rc, ur] ~ dnorm(b_0, tau_sq_0)
+    B_1[rc, ur] ~ dnorm(b_1, tau_sq_1)
+  }
+  inv_sigma_sq[rc] ~ dgamma(1,1)
+  sigma[rc] <- sqrt(pow(inv_sigma_sq[rc], -1))
+}
+
+#hyperpriors
+b_0 ~ dnorm(mu_b0,prec_b0)
+b_1 ~ dnorm(mu_b1,prec_b1)
+tau_sq_0 ~ dgamma(1,1)
+tau_sq_1 ~ dgamma(1,1)
+}
+
+"
+
+
+
+
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+
+
+posterior_jags  <- run.jags(the_formula,
+                            n.chains = 2,
+                            data = the_data,
+                            monitor = c("B_0", "B_1", "sigma"),
+                            adapt = 1000,
+                            burnin = 5000,
+                            sample = 2500,
+                            thin = 100, 
+                            inits = initsfunction)
+
+
+
+#extract, store in dictionary for quicker retrieval
+posterior_df = data.frame(as.mcmc(posterior_jags))
+posterior_list = lapply(colnames(posterior_df), function(x) posterior_df%>%pull(x))%>%
+  `names<-`(colnames(posterior_df))
+```
+
+
+```{r}
+synth_helper <- function(posterior_list, df, ii = NULL){
+  
+  #randomly select posterior draw to use
+  
+  if (is.null(ii)){
+    ii = sample(1:nrow(df), 1)
+  }
+  
+  
+  beta_suffixes = paste0(".", df$Race, ".", df$UrbanRural, ".")
+  sigma_suffixes = paste0(".", df$Race, ".")
+  
+  b0 = sapply(beta_suffixes, function(x) posterior_list[[paste0("B_0", x)]][ii])%>%as.vector()
+  b1 = sapply(beta_suffixes, function(x) posterior_list[[paste0("B_1", x)]][ii])%>%as.vector()
+  
+  
+  mu_post = b0+b1*df%>%pull(logExp)
+  sig_post = sapply(sigma_suffixes, function(x) posterior_list[[paste0("sigma", x)]][ii])%>%as.vector()
+  
+  result = rnorm(nrow(df), mu_post, sig_post)
+  
+  return(result)
+}
+
+
+synth_logInc <- function(posterior_list, df, m=1, ...){
+  
+  set.seed(4*m-1)
+  sample_idx = sample(1:length(posterior_list[[1]]), m, replace = F)
+  
+  lapply(sample_idx,
+         function(y)
+           synth_helper(posterior_list, df, ...)
+         )%>%
+    return()
+}
+
+
+
+synth_single = synth_logInc(posterior_list, CEsample, m = 1)
+
+synth_single_df = data.frame(logInc_true = CEsample$logInc,
+                             logInc_synth = unlist(synth_single),
+                             logExp = CEsample$logExp,
+                             Race = as.character(CEsample$Race),
+                             UrbanRural = as.character(CEsample$UrbanRural))
+```
+
+
+Now, we're ready to measure global utility. First, I code up a function to measure propensity score:
+```{r}
+propensity_util_score <- function(synth_df, true_df, order = 1, c = .5){
+  
+  propensity_df = bind_rows(synth_df, true_df)
+  propensity_df$logInc = scale(propensity_df$logInc)
+  propensity_df$logExp = scale(propensity_df$logExp)
+  frm = as.formula(paste0("t ~ .", ifelse(order>1, paste0("^", order), "")))
+  clf_logistic = glm(frm, data = propensity_df, family = "binomial")
+  
+  p_hats = predict(clf_logistic, newdata = propensity_df, type = "response")%>%
+    as.vector()%>%
+    suppressMessages()
+  
+  return(mean((p_hats - c)^2))
+  
+}
+```
+
+We use this function to calculate $U_p$ for our synthetic draw from the last lab. For now, we'll stick to first order interaction (lest we grossly overfit, thus wrongly suppressing propensity score) We have (note that one of the race-urban interactions is missing, thus R barks at us):
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results = 'hide'}
+
+true_df = synth_single_df[, c("logInc_true", "logExp", "Race", "UrbanRural")]%>%
+  rename(logInc = logInc_true)%>%
+  mutate(t = 0)
+
+synth_df = synth_single_df[, c("logInc_synth", "logExp", "Race", "UrbanRural")]%>%
+  rename(logInc = logInc_synth)%>%
+  mutate(t = 1)
+
+U_p1 = propensity_util_score(true_df, synth_df, order = 2, c = .5)
+
+```
+By this utility measure, the synthetic draw performed decently, as $U_p = $`r U_p1`. However, this was only one draw -- let's see the distribution of $U_p$ across multiple draws, say $m = 100$:
+
+```{r, warnings = FALSE, echo = FALSE, message = FALSE, results = 'hide'}
+
+synth_100 = synth_logInc(posterior_list, CEsample, m = 100)
+
+U_p = rep(NA, length(synth_100))
+for (ss in 1:length(synth_100)){
+  
+  synth_single_df = data.frame(logInc_true = CEsample$logInc,
+                               logInc_synth = synth_100[[ss]],
+                               logExp = CEsample$logExp,
+                               Race = as.character(CEsample$Race),
+                               UrbanRural = as.character(CEsample$UrbanRural))
+  
+  true_df = synth_single_df[, c("logInc_true", "logExp", "Race", "UrbanRural")]%>%
+  rename(logInc = logInc_true)%>%
+  mutate(t = 0)
+
+  synth_df = synth_single_df[, c("logInc_synth", "logExp", "Race", "UrbanRural")]%>%
+    rename(logInc = logInc_synth)%>%
+    mutate(t = 1)
+
+  U_p[ss] = propensity_util_score(true_df, synth_df, order = 2, c = .5)
+}
+```
+
+```{r}
+U_p; plot(density(U_p))
+```
+
+Indeed, we see that in taking multiple synthetic draws, we still obtain decent $U_p$ measures.
+
+We can also repeat the above analysis, but with higher-order interaction in the logistic regression. However, this might lead to overfit, incorrectly suppressing our propensity measure when we "recycle" the stacked data. 
+
+
+
+
+I cannot find Woo's precise clustering algorithm, so for ease of fitting I will use K-means here. Just as Woo did, I will try a variety of cluster centers, ranging from 5-200. Finally, for this trial run of the method, each cluster will be weighted equally, though this is certainly an area for more in-depth exploration in future analyses.
+
+```{r}
+
+
+cluster_utility_score <- function(g, true_df, synth_df){
+  
+  df_dummied = bind_rows(true_df, synth_df)%>%
+    fastDummies::dummy_cols(., c("UrbanRural", "Race"), remove_first_dummy = T)%>%
+    mutate_if(is.numeric, scale)
+  df_dummied$logExp = scale(df_dummied$logExp); df_dummied$logInc = scale(df_dummied$logInc)
+  cl_obj = kmeans(df_dummied%>%dplyr::select(-t), centers = g, iter.max = 500)
+  
+  df_dummied$cl = cl_obj$cluster
+  
+  group_analyze = df_dummied%>%
+    group_by(cl)%>%
+    summarise(pct_synth = sum(t)/n(),
+              n = n())
+    
+  return(mean((group_analyze$pct_synth - .5)^2))
+  
+}
+
+
+
+
+```
+
+In performing this cluster analysis for our single synthetic draw, and over clusters $G = \{5, 10, 20, 25, 100, 200\}$, 
+```{r}
+g_seq = c(5, 10, 20, 25, 37, 50, 75, 100, 200)
+
+true_df = synth_single_df[, c("logInc_true", "logExp", "Race", "UrbanRural")]%>%
+  rename(logInc = logInc_true)%>%
+  mutate(t = 0)
+
+synth_df = synth_single_df[, c("logInc_synth", "logExp", "Race", "UrbanRural")]%>%
+  rename(logInc = logInc_synth)%>%
+  mutate(t = 1)
+
+sapply(g_seq, cluster_utility_score, true_df, synth_df)
+```
+
+we achieve $U_c$'s all less than $.05$ -- again, a pretty good scores, though these increase noticably as the clusters become increasingly granular. Further, in repeating this for the $m = 100$ synthetic draws, this performance appears non-anomalous, as we have
+
+```{r}
+synth_100 = synth_logInc(posterior_list, CEsample, m = 100)
+U_c_mat = matrix(rep(NA, 100*length(g_seq)), ncol = length(g_seq))
+
+for (ss in 1:length(synth_100)){
+  
+  synth_single_df = data.frame(logInc_true = CEsample$logInc,
+                               logInc_synth = synth_100[[ss]],
+                               logExp = CEsample$logExp,
+                               Race = as.character(CEsample$Race),
+                               UrbanRural = as.character(CEsample$UrbanRural))
+  
+  true_df = synth_single_df[, c("logInc_true", "logExp", "Race", "UrbanRural")]%>%
+  rename(logInc = logInc_true)%>%
+  mutate(t = 0)
+
+  synth_df = synth_single_df[, c("logInc_synth", "logExp", "Race", "UrbanRural")]%>%
+    rename(logInc = logInc_synth)%>%
+    mutate(t = 1)
+
+  U_c_mat[ss, ] = sapply(g_seq, cluster_utility_score, true_df, synth_df)
+}
+
+U_c_df = U_c_mat%>%
+  data.frame()%>%
+  `colnames<-`( g_seq)%>%
+  gather(G, U_c)%>%
+  mutate(G = as.numeric(as.character(G)))
+
+ggplot(U_c_df, aes(x = G, y = U_c))+
+  geom_point()+
+  stat_smooth() +
+  labs(title = "Number of Clusters vs. U_c", x = "Number of Clusters, G", y = "U_c")
+```
+
+Indeed, even when taking multiple synthetic samples, and calculating the $U_c$ score for each, the $U_c$ scores are largely low, stable, and rising as $G$ increases. 
+
+
+Finally, we apply the empirical CDF method to the synthetic `logInc` data, both for the single synthetic draw and the 100 draws. 
+
+```{r}
+empirical_utility_score <- function(true_df, synth_df, var = "logInc"){
+  
+  Sx = sapply(c(true_df%>%pull(var), synth_df%>%pull(var)),
+              function(x) sum(true_df%>%pull(var)<=x)/length(true_df%>%pull(var)))
+  
+  Sy = sapply(c(true_df%>%pull(var), synth_df%>%pull(var)),
+              function(x) sum(synth_df%>%pull(var)<=x)/length(synth_df%>%pull(var)))
+  
+  Um = max(abs(Sx - Sy)); Us = mean((Sx - Sy)^2)
+  
+  return(c(Um, Us))
+}
+```
+
+For the single draw, we get:
+
+```{r}
+true_df = synth_single_df[, c("logInc_true", "logExp", "Race", "UrbanRural")]%>%
+  rename(logInc = logInc_true)
+
+synth_df = synth_single_df[, c("logInc_synth", "logExp", "Race", "UrbanRural")]%>%
+    rename(logInc = logInc_synth)
+  
+emp_cdf_score1 = empirical_utility_score(true_df, synth_df, var = "logInc")
+```
+
+For the synthetic sample, we get $U_c = $ `r emp_cdf_score1[1]` and $U_s = $ `r emp_cdf_score1[2]` -- both desirable scores. For the 100 draws, the results are similar:
+
+```{r, eval = FALSE}
+synth_100 = synth_logInc(posterior_list, CEsample, m = 100)
+U_mat = matrix(rep(NA, 200), ncol = 2)
+
+for (ss in 1:length(synth_100)){
+  
+  synth_single_df = data.frame(logInc_true = CEsample$logInc,
+                               logInc_synth = synth_100[[ss]],
+                               logExp = CEsample$logExp,
+                               Race = as.character(CEsample$Race),
+                               UrbanRural = as.character(CEsample$UrbanRural))
+  
+  true_df = synth_single_df[, c("logInc_true", "logExp", "Race", "UrbanRural")]%>%
+    rename(logInc = logInc_true)
+
+  synth_df = synth_single_df[, c("logInc_synth", "logExp", "Race", "UrbanRural")]%>%
+    rename(logInc = logInc_synth)
+
+  U_mat[ss, ] = empirical_utility_score(true_df, synth_df, var = "logInc")
+  
+}
+
+
+```
+In looking at its derivation for one variable, this utility measure bears considerable similarity to a two-sided K-S test. However, their difference is subtle: whereas a proper K-S test would calculate the ecdfs by taking the max (supremum) distance between the ecdfs, the $U_c$ method takes the max/supremum distance between the ecdfs evaluated at each point in the merged data. In this way, the two are similar in that it's a distance between ecdfs -- however, what differs is the vector being fed into the ecdf.
+
+Nevertheless, this also suggests that for a synthetic and true data pairing, perhaps a regular old two-sample K-S test could be an additional global utility measure. Like with any such utility measure, it would undoubtedly have its shortcomings, but it would provide another "broad but blunt" description of distributional difference for a synthetic and true pairing. 
+
+
+### v.)
+Of the proposed global utility measures, I have the most reservation about the clustering method, simply because of the hyperparameter tuning involved. At a gut level, a global utility measure is something that shouldn't require tuning or semi-arbitrary decisions -- that is, it ought to be independent, empirical, and non-malleable (to the greatest degree possible). However here, the hyperparameterization of $G$ undercuts this empiricism -- in my mind, a measure that depends in large part on the user's "input setting" may not be best for "broad but blunt," apples-to-apples comparisons. If we don't even know what the optimal $G$ is, how can we let the clusters tell us what the best synthesis is. 
+
+To a lesser extent, the tuning required for the logistic regression also bothers me. By excessively increasing the order and interaction of the regression, one could grossly overfit the model. Then, once the fitting data was recycled into the model, in order to compute propensity score, this overfit would be disguised (i.e. not held accountable to a test dataset). However, this sort of tuning ambiguity can be better mitigated. For example, the logistic regression can be fit up to first order interaction, or, for sufficiently large datasets, the merged data can be split (stratified) into training and testing, allowing for more nuanced feature selection methods (such as lasso or ridge). In this way, the logistic regression/propensity score approach is more viable. Particularly on large data sets, I think it is a good measure of global utility. 
+
+Finally, I also like the empirical CDF methods, $U_c$ and $U_s$. Yes, as Woo acnowledges, the synthetic and true ecdfs may often align closely, but the unambiguous (empirical -- requires little human "instruction") nature of the measure is appealing. What's more, the empirical approach effectively amounts to a 2-sided K-S test, a well-respected test for differences in distributions. Given that the ultimate objective of global utility is to measure overall differences in distribution, this is a good thing.
+
+
+# 3.)
+
+Through its open-data portal, the City of Seattle (where I'm from) releases all sorts of data, from public safety data to social services data. One particularly vulnerable dataset on this portal is its client level "Aging and Disability Services" dataset, which includes racial, socioeconomic, and location-related information about people on elderly and/or disability services in Seattle. Let's take an exploratory look at the dataset (using 2016 data)
+
+```{r}
+setwd("~/Downloads")
+ageDisData <- read.csv("Aging_and_Disability_Services_-_Client_Level_Data_2016.csv")
+
+summary(ageDisData)
+```
+
+
+Clearly, this is an expansive dataset, and the disclosure risks are obvious. With knowlege of only a few highly-descriptive variables -- for example veteran status, neighborhood, race, and number of children -- an individual could plausibly be identified in the data. This could be harmful for a number of reasons: for one, it could embarass the individuals who are on city services. Additionally, by identifying them specifically within an already vulnerable population, it could make them a target for scammers or other nefarious actors. 
+
+Given the amount of information contained in this data (everything from the individual's ability to dress themself to their eduction), there are countless ways to demonstrate and/or quantify disclosure risks. For example, we could write a script (as we did in the first lab) that scans across all permutations of variables, and tags particularly identifiable/unique subsets of the population based on these combinations. Alternatively, we could scrutinise joint density plots in order to identify outliers, or look at class imbalances to identify vulnerable traits.
+
+However, to quantify/demonstrate the disclosure risks in this data, I also want to propose my own , basic Euclidian distance, to quantify an individual's uniqueness within the dataset. Specifically, for each response vector, I will measure the distance of that response vector to all other response vectors, to identify "nearby" or similar responses. Those with few similar responses, it follows, are most vulnerable, while those with many are least.
+
+More precisely, this Euclidian distance goes as follows: 1.) I take all variables of interest (detailed below), 2.) convert categorical variables to dummies (drop the first level), and 3.) compute the Euclidian distance of one entry to that of another. For one entry, compare the distances to all rows, and then examine summary statistics of all these distances to get a sense of the entry of interest's overall distance (and by extension, uniqueness) from the rest of the data. 
+
+Before computation, a bit of data wrangling. 
+```{r}
+code_vars = c("GeographicLocation", "AgeRange", "RaceCode", "IncomeCode", "Language", "AgencyID")
+ynu_vars = c("Veteran","LiveAlone", "MedicalManagement", "Driving")
+
+ageDisData_wr = ageDisData%>%
+  filter(grepl("Seattle Neighborhoods", GeographicLocation))%>%
+  mutate_at(code_vars, function(x)
+      ifelse(x == ""|x==" ", 0, x))%>%
+  mutate_at(ynu_vars, function(x)
+      ifelse(x ==" "|x=="", "U", toupper(x)))%>%
+  dplyr::select(c("ClientID", code_vars, ynu_vars))
+
+ageDisData_du = ageDisData_wr%>%
+  dplyr::select(-ClientID)%>%
+  fastDummies::dummy_cols(., c(code_vars, ynu_vars), remove_first_dummy = T, remove_selected_columns = T)%>%
+  as.matrix()
+
+```
+
+As encoded above, the variables included in similarity measure are coded variables `code_vars = c("GeographicLocation", "AgeRange", "RaceCode", "IncomeCode", "Language", "AgencyID")` and pseudo-binary (includes an unknown case) `ynu_vars = c("Veteran","LiveAlone", "MedicalManagement", "Driving")`. Certainly, we could include a whole host of other variables in future analyses, but this is probably a good starting point. 
+
+Importantly, I also restricted the data to people just in "Seattle Neighborhoods", as defined by the dataset. This was to ensure a.) reasonable run times and b.) a focus on the immediate Seattle area. 
+
+
+```{r}
+dist_helper <- function(i){
+  sapply(1:nrow(ageDisData_du),
+         function(x){sum((ageDisData_du[i, ] - ageDisData_du[x, ])^2, na.rm = T)^.5})->result
+  return(summary(result))
+}
+
+suppressMessages(library(doParallel))
+cl <- makeCluster(4)
+registerDoParallel(cl)
+set.seed(2020)
+#compute 100 distances, as an example
+distances = foreach(i=1:100) %dopar% {dist_helper(i)}
+stopCluster(cl)
+
+distance_df = distances%>%
+  do.call("rbind", .)%>%
+  data.frame()%>%
+  arrange(desc(X1st.Qu.))
+
+distance_df%>%head(100)
+```
+
+Because of the size of the data and the time it takes to knit, I wasn't able to complete a full Euclidian distance run (only the first 100 distances). However, this is meant to be an example of the framework I use for thinking about similarity and identifiability. If a single entry is "nearby" (i.e. small to zero Euclidian distance) to many other entries, that entry is less unique. However, if the majority of distances are larger, this entry may be more "isolated" within the dataset, and the risk of individual disclosure could be greater. 
+
+For example, in the table above, I have sorted these 100 entries by their first quartile difference -- that is, the distance for which 75% of all entries are further away. The higher this number, the more entries that are further away, and the more unique/identfiable the entry. Notably, all of the distances computed here have a `Min` of 0, indicating there is at least one identical entry. However, I'm sure that with the inclusion of additional variables, certain people would become immediately identifiable. 
