@@ -22,8 +22,8 @@ intercept <- -0.72144
 
 income <- Data[,1]
 expenditure <- Data[,3]
-d <- income * slope_income + + expenditure * slope_expend + intercept
-p <- 1 / (1 + d)
+d <- income * slope_income + expenditure * slope_expend + intercept
+p <- exp(d) / (1 + exp(d))
 diff <- (p-c)^2
 U_p <- sum(diff) / N
 U_p
