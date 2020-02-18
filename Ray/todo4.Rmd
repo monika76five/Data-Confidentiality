@@ -1,0 +1,51 @@
+```{r}
+library(runjags)
+library(coda)
+library(ggplot2)
+library(dplyr)
+data<- read.csv("CEdata.csv")
+```
+
+```{r}
+post <- as.mcmc(posterior_MLR)
+```
+```{r}
+synthesize <- function(X, index, n){
+  mean_Y <- post[index, "beta0"] + X$x_income * post[index, "beta1"] + X$x_rural * post[index, "beta2"] + X$x_race_B * post[index, "beta3"] +  X$x_race_N * post[index, "beta4"] +  X$x_race_A * post[index,   "beta5"] +  X$x_race_P * post[index, "beta6"] +  X$x_race_M * post[index, "beta7"]
+  synthetic_Y <- rnorm(n,mean_Y, post[index,"sigma"])
+  data.frame(X$x_income, synthetic_Y)
+}
+n <- dim(data)[1]
+params <- data.frame(x_income, x_rural, x_race_B, x_race_N, x_race_A, x_race_P, x_race_M)
+synthetic_one<- synthesize(params,1,n)
+names(synthetic_one) <- c("oriinc", "synloginc")
+```
+
+```{r}
+col1 = rep(0,nrow(synthetic_one))
+ori = data.frame(synthetic_one$OriginalIncome)
+ori$D = zero_col
+colnames(ori)[colnames(ori) == "synthetic_one.OriginalIncome"] <- "inc"
+col2 = rep(1,nrow(synthetic_one))
+synd = data.frame(synthetic_one$logIncome_syn)
+synd$D = one_col
+colnames(synd)[colnames(synd) == "synthetic_one.logIncome_syn"] <- "inc"
+data2 = rbind(ori, synd)
+```
+
+```{r}
+lm1 = glm(D ~ inc , data = data2, family = "binomial")
+```
+```{r}
+n = nrow(data2)
+c = 1/2
+pred = data.frame(data2$inc)
+pred$hel = predict(lm1, newdata = pred$inc, type = "response")
+up = 0
+for (row in 1:nrow(pred)) {
+  up = up + (pred[row, "hel"] - c)^2
+}
+up = up * (1/n)
+up
+```
+
