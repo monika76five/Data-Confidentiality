@@ -116,4 +116,8 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 
 3. <ins>**Present your synthesis model(s) for your project dataset(s)**. Refer to the Bayesian Synthesis Models \#1 and \#2 lectures for different synthesis models we have covered.</ins>
 
+4. Additional synthesis models for other variable types:
+    1. Ordered categorical: probit regression. Check out ```Hoff, P. (2009)``` (textbook for MATH 347),  Section 12.1.1. Note that the book gives sample R script for writing your own MCMC. Dig around to see how to use JAGS for implementation.
+    2. Count: Poisson regression. Check out ```Hoff, P. (2009)``` (textbook for MATH 347), Section 10.1. Note that the book gives sample R script for writing your own MCMC. Dig around to see how to use JAGS for implementation.
+    
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
