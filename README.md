@@ -113,10 +113,14 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     1. <ins>Generate ```m = 20``` synthetic datasets given your synthesis model for the CE sample. If you are using ```set.seed()```, make sure that you do not generate the same synthetic data for each ```m = 20```.</ins>
     2. <ins>Estimate a few analysis-specific utility measures, e.g. the mean and median of a continuous synthetic variable, the regression analysis coefficients, for each synthetic dataset.</ins>
     3. <ins>Use the combining rules in ```Drechsler 2001 Chapter 6-1``` (for fully synthetic data) and / or ```Drechsler 2001 Chapter 7-1``` (for partially synthetic data) and create your final point estimate and confidence interval of the analysis-specific utility measures you calculated in Item ii above.</ins>
+    
+3. <ins>Read ```Drechsler, J. and Reiter, J. P. (2009)``` in the References folder, and prepare the following results.</ins>
+    1. <ins>Focus on Section 2.3 about the interval overlap utility measure.</ins>
+    2. <ins>Calcuate the corresponding interval overlap measure for each of the analysis-specific utility measures you have done in Item 2.ii above.</ins>
 
-3. <ins>**Present your synthesis model(s) for your project dataset(s)**. Refer to the Bayesian Synthesis Models \#1 and \#2 lectures for different synthesis models we have covered.</ins>
+4. <ins>**Present your synthesis model(s) for your project dataset(s)**. Refer to the Bayesian Synthesis Models \#1 and \#2 lectures for different synthesis models we have covered.</ins>
 
-4. Additional synthesis models for other variable types:
+5. Additional synthesis models for other variable types:
     1. Ordered categorical: **probit regression**. Check out ```Hoff, P. (2009)``` (textbook for MATH 347),  **Section 12.1.1**. Note that the book gives sample R script for writing your own MCMC. Dig around to see how to use JAGS for implementation.
     2. Count: **Poisson regression**. Check out ```Hoff, P. (2009)``` (textbook for MATH 347), **Section 10.1**. Note that the book gives sample R script for writing your own MCMC. Dig around to see how to use JAGS for implementation.
     
