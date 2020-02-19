@@ -61,10 +61,10 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     2. Compare the mean and median of ```log(Income)```, in the original dataset and the confidential dataset. Are they close to each other?
     3. Compare the point estimate of the regression coefficients of ```log(Income)``` on ```log(Expenditure)```, in the original dataset and the confidential dataset. Are they close to each other? 
     
-3. Read ```Kinney et al (2011)``` in the References folder, and prepare answers to the following questions.
+3. Read ```Kinney et al. (2011)``` in the References folder, and prepare answers to the following questions.
     1. What are the synthesized and un-synthesized variables in the SynLBD?
     2. What approaches did they take when they have more than 1 variables deemed sensitive and to be synthesized?
-    3. What Bayesian synthesis model(s) did they use? Details of the synthesis models are in ```Kinney et al (2011) appendix```.
+    3. What Bayesian synthesis model(s) did they use? Details of the synthesis models are in ```Kinney et al. (2011) appendix```.
     4. How many synthetic datasets did they generate?
     5. How did they evaluate the utility of the synthetic datasets? Can you think of any other utility measures?
     6. How did they evaluate the disclosure risks? Can you think of any other disclosure risks measures?
@@ -78,7 +78,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 
 ### To-do (done before class on 2/18)
 
-1. Read ```Kinney et al (2011)``` in the References folder, and prepare answers to the following questions.
+1. Read ```Kinney et al. (2011)``` in the References folder, and prepare answers to the following questions.
     1. What are the synthesized and un-synthesized variables in the SynLBD?
     2. What approaches did they take when they have more than 1 variables deemed sensitive and to be synthesized?
     3. What Bayesian synthesis model(s) did they use? Details of the synthesis models are in ```Kinney et al (2011) appendix```.
@@ -86,7 +86,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     5. How did they evaluate the utility of the synthetic datasets? Can you think of any other utility measures?
     6. How did they evaluate the disclosure risks? Can you think of any other disclosure risks measures?
     
-2. Read ```Woo et al (2009)``` in the References folder, and prepare answers to the following questions.
+2. Read ```Woo et al. (2009)``` in the References folder, and prepare answers to the following questions.
     1. What are the pros and cons of analysis-specific measures?
     2. What are the pros and cons of global measures?
     3. What are the similaries between the proposed global measures?
@@ -102,7 +102,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 
 ### To-do (done before class on 2/25)
 
-1. Read ```Woo et al (2009)``` in the References folder, and prepare answers to the following questions.
+1. Read ```Woo et al. (2009)``` in the References folder, and prepare answers to the following questions.
     1. What are the pros and cons of analysis-specific measures?
     2. What are the pros and cons of global measures?
     3. What are the similaries between the proposed global measures?
