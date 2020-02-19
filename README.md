@@ -109,7 +109,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     4. <ins>Evaluate the global utility measures of your synthesized ```log(Income)``` from your Bayesian synthesis model for the CE sample.</ins>
     5. Which global measure do you think works the best? The least? Give explanations.
     
-2. <ins>Read ```Drechsler (2001) Chapter 7.1``` in the References folder, and prepare the following results.</ins>
+2. <ins>Read ```Drechsler (2001) Chapter 6-1, 7-1``` in the References folder, and prepare the following results.</ins>
     1. <ins>Generate ```m = 20``` synthetic datasets given your synthesis model for the CE sample. If you are using ```set.seed()```, make sure that you do not generate the same synthetic data for each ```m = 20```.</ins>
     2. <ins>Estimate a few analysis-specific utility measures, e.g. the mean and median of a continuous synthetic variable, the regression analysis coefficients, for each synthetic dataset.</ins>
     3. <ins>Use the combining rules in ```Drechsler 2001 Chapter 6-1``` (for fully synthetic data) and / or ```Drechsler 2001 Chapter 7-1``` (for partially synthetic data) and create your final point estimate and confidence interval of the analysis-specific utility measures you calculated in Item ii above.</ins>
