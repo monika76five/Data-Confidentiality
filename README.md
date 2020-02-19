@@ -114,9 +114,8 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     2. <ins>Estimate a few analysis-specific utility measures, e.g. the mean and median of a continuous synthetic variable, the regression analysis coefficients, for each synthetic dataset.</ins>
     3. <ins>Use the combining rules in ```Drechsler 2001 Chapter 6-1``` (for fully synthetic data) and / or ```Drechsler 2001 Chapter 7-1``` (for partially synthetic data) and create your final point estimate and confidence interval of the analysis-specific utility measures you calculated in Item ii above.</ins>
     
-3. <ins>Read ```Drechsler, J. and Reiter, J. P. (2009)``` in the References folder, and prepare the following results.</ins>
-    1. <ins>Focus on Section 2.3 about the interval overlap utility measure.</ins>
-    2. <ins>Calcuate the corresponding interval overlap measure for each of the analysis-specific utility measures you have done in Item 2.ii above.</ins>
+3. <ins>Read ```Drechsler, J. and Reiter, J. P. (2009)``` in the References folder (focus on Section 2.3 about the interval overlap utility measure), and prepare the following results.</ins>
+    1. <ins>Calcuate the corresponding interval overlap measure for each of the analysis-specific utility measures you have done in Item 2.ii above.</ins>
 
 4. <ins>**Present your synthesis model(s) for your project dataset(s)**. Refer to the Bayesian Synthesis Models \#1 and \#2 lectures for different synthesis models we have covered.</ins>
 
