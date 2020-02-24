@@ -1,0 +1,291 @@
+---
+title: "Methods for Utility Evaluation #2"
+author: "Henrik Olsson"
+date: "February 25, 2020"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+subtitle: MATH 301 Data Confidentiality
+---
+
+```{r include=FALSE}
+library(readr)
+library(LearnBayes)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(runjags)
+library(coda)
+library(fastDummies)
+library(tinytex)
+```
+
+```{r}
+CEdata<- read.csv("CEdata.csv")
+head(CEdata)
+```
+
+### Read Drechsler (2001) Chapter 6-1, 7-1 in the References folder, and prepare the following results.
+
+
+```{r}
+CEdata$LogExp <- log(CEdata$Expenditure)
+CEdata$LogIncome <- log(CEdata$Income)
+
+## create indicator variable for Rural (2)
+CEdata$Rural = fastDummies::dummy_cols(CEdata$UrbanRural)[,names(fastDummies::dummy_cols(CEdata$UrbanRural))
+== ".data_1"]
+
+## create indicator variables for Black (3), Native American (4), 
+## Asian (5), Pacific Islander (6), and Multi-race (7)
+CEdata$Race_Black = fastDummies::dummy_cols(CEdata$Race)[,names(fastDummies::dummy_cols(CEdata$Race)) == ".data_2"]
+CEdata$Race_NA = fastDummies::dummy_cols(CEdata$Race)[,names(fastDummies::dummy_cols(CEdata$Race)) == ".data_3"]
+CEdata$Race_Asian = fastDummies::dummy_cols(CEdata$Race)[,names(fastDummies::dummy_cols(CEdata$Race)) == ".data_4"]
+CEdata$Race_PI = fastDummies::dummy_cols(CEdata$Race)[,names(fastDummies::dummy_cols(CEdata$Race)) == ".data_5"]
+CEdata$Race_M = fastDummies::dummy_cols(CEdata$Race)[,names(fastDummies::dummy_cols(CEdata$Race)) == ".data_6"]
+```
+
+```{r}
+## JAGS script
+modelString <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_income[i] + beta2*x_rural[i] +
+beta3*x_race_B[i] + beta4*x_race_N[i] +
+beta5*x_race_A[i] + beta6*x_race_P[i] +
+beta7*x_race_M[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+beta7 ~ dnorm(mu7, g7)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}"
+```
+
+```{r}
+y = as.vector(CEdata$LogExp)
+x_income = as.vector(CEdata$LogIncome)
+x_rural = as.vector(CEdata$Rural)
+x_race_B = as.vector(CEdata$Race_Black)
+x_race_N = as.vector(CEdata$Race_NA)
+x_race_A = as.vector(CEdata$Race_Asian)
+x_race_P = as.vector(CEdata$Race_PI)
+x_race_M = as.vector(CEdata$Race_M)
+N = length(y) # Compute the number of observations
+
+
+## Pass the data and hyperparameter values to JAGS
+the_data <- list("y" = y, "x_income" = x_income,
+"x_rural" = x_rural, "x_race_B" = x_race_B,
+"x_race_N" = x_race_N, "x_race_A" = x_race_A,
+"x_race_P" = x_race_P, "x_race_M" = x_race_M,
+"N" = N,
+"mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+"mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+"mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+"mu6" = 0, "g6" = 1, "mu7" = 0, "g7" = 1,
+"a" = 1, "b" = 1)
+```
+
+```{r}
+initsfunction <- function(chain){
+.RNG.seed <- c(1,2)[chain]
+.RNG.name <- c("base::Super-Duper",
+"base::Wichmann-Hill")[chain]
+return(list(.RNG.seed=.RNG.seed,
+.RNG.name=.RNG.name))
+}
+```
+
+```{r}
+## Run the JAGS code for this model:
+posterior_MLR <- run.jags(modelString,
+n.chains = 1,
+data = the_data,
+monitor = c("beta0", "beta1", "beta2",
+"beta3", "beta4", "beta5",
+"beta6", "beta7", "sigma"),
+adapt = 1000,
+burnin = 5000,
+sample = 5000,
+thin = 1,
+inits = initsfunction)
+## JAGS output 
+summary(posterior_MLR)
+```
+
+```{r}
+plot(posterior_MLR, vars = "beta1")
+```
+
+```{r}
+## Saving posterior parameter draws
+post <- as.mcmc(posterior_MLR)
+
+## Generating one set of sythetic data
+synthesize <- function(X, index, n){
+  mean_Y <- post[index, "beta0"] +  X$x_income * post[index, "beta1"] +  X$x_rural * post[index, "beta2"] +  X$x_race_B * post[index, "beta3"] +  X$x_race_N * post[index, "beta4"] +  X$x_race_A * post[index, "beta5"] +  X$x_race_P * post[index, "beta6"] +  X$x_race_M * post[index, "beta7"] 
+  synthetic_Y <- rnorm(n, mean_Y, post[index, "sigma"])
+  data.frame(X$x_income, synthetic_Y)
+}
+```
+
+#### i. Generate m = 20 synthetic datasets given your synthesis model for the CE sample. If you are using set.seed(), make sure that you do not generate the same synthetic data for each m = 20.
+
+```{r}
+set.seed(123)
+m <- 20
+n <- dim(CEdata)[1]
+synthetic_m <- vector("list",m)
+new <- data.frame(x_income, x_rural, x_race_B, x_race_N, x_race_A, x_race_P, x_race_M)
+for (l in 1:m){
+  synthetic_one <- synthesize(new, 4980+l, n)
+  names(synthetic_one) <- c("OrigLogIncome", "SynLogIncome")
+  synthetic_m[[l]] <- synthetic_one
+}
+```
+
+#### ii. Estimate a few analysis-specific utility measures, e.g. the mean and median of a continuous synthetic variable, the regression analysis coefficients, for each synthetic dataset.
+
+```{r}
+## Estimates the mean, median, mode, variance, and range of synthetic log Income, as well as regression analysis coefficients
+mean <- c()
+median <- c()
+mode <- c()
+variance <- c()
+range <- c()
+
+for (l in 1:m){
+  mean[l] = mean(synthetic_m[[l]]$SynLogIncome)
+  median[l] = median(synthetic_m[[l]]$SynLogIncome)
+  mode[l] = mode(synthetic_m[[l]]$SynLogIncome)
+  variance[l] = var(synthetic_m[[l]]$SynLogIncome)
+  range[l] = range(synthetic_m[[l]]$SynLogIncome)
+  print(lm(CEdata$LogExp ~ synthetic_m[[l]]$SynLogIncome))
+}
+
+synthetic_data <- synthetic_m[[1]]
+```
+
+#### Use the combining rules in Drechsler 2001 Chapter 6-1 (for fully synthetic data) and / or Drechsler 2001 Chapter 7-1 (for partially synthetic data) and create your final point estimate and confidence interval of the analysis-specific utility measures you calculated in Item ii above.
+
+```{r}
+## Univariate estimands 
+## We need the following for inferences for scalar Q
+qbar_m = sum(mean)/m
+b_m = sum(mean - qbar_m)^2/(m-1)
+ubar_m = sum(variance)/m
+
+## Use qbar_m to estimate Q and the following to estimate the variance of qbar_m
+T_m = (1 + (m^-1))*b_m-ubar_m
+```
+
+##### Fully Synthetic Data
+```{r}
+## Synthesized log income mean
+u_mean = var(mean)
+qbar_mean = sum(mean)/m
+b_mean = sum(mean - qbar_mean)^2/(m-1)
+ubar_mean = sum(u_mean)/m
+T_mean = (1 + (m^-1))*b_mean - ubar_mean
+
+qbar_mean
+T_mean
+```
+
+```{r}
+## Synthesized log income median
+u_median = var(median)
+qbar_median = sum(median)/m
+b_median = sum(median - qbar_median)^2/(m-1)
+ubar_median = sum(u_median)/m
+T_median = (1 + (m^-1))*b_median - ubar_median
+
+qbar_median
+T_median
+```
+
+```{r}
+## Synthesized log income variance
+u_var = var(variance)
+qbar_var = sum(variance)/m
+b_var = sum(variance - qbar_var)^2/(m-1)
+ubar_var = sum(u_var)/m
+T_var = (1 + (m^-1))*b_var - ubar_var
+
+qbar_var
+T_var
+```
+
+##### Partially Synthetic Data
+
+```{r}
+## Use qbar_m to estimate Q and the following to estimate the variance of qbar_m
+T_p = (b_m/m) + ubar_m
+```
+
+```{r}
+## Synthesized log income mean
+u_mean = var(mean)
+qbar_mean = sum(mean)/m
+b_mean = sum(mean - qbar_mean)^2/(m-1)
+ubar_mean = sum(u_mean)/m
+T_meanp = (b_mean/m) + ubar_mean
+
+qbar_mean
+T_meanp
+```
+
+```{r}
+## Synthesized log income median
+u_median = var(median)
+qbar_median = sum(median)/m
+b_median = sum(median - qbar_median)^2/(m-1)
+ubar_median = sum(u_median)/m
+T_medianp = (b_median/m) + ubar_median
+
+qbar_median
+T_medianp
+```
+
+```{r}
+## Synthesized log income variance
+u_var = var(variance)
+qbar_var = sum(variance)/m
+b_var = sum(variance - qbar_var)^2/(m-1)
+ubar_var = sum(u_var)/m
+T_varp = (b_var/m) + ubar_var
+
+qbar_var
+T_varp
+```
+
+I am not completely sure how to replicate the results of Drechsler to create final point estimates and confidence intervals in the partially and fully synthetic data
+
+##### Interval Overlap Measure 
+
+```{r}
+
+L_s = quantile(synthetic_data$SynLogIncome, 0.025)
+U_s = quantile(synthetic_data$SynLogIncome, 0.975)
+
+L_o = quantile(synthetic_data$OrigLogIncome, 0.025)
+U_o = quantile(synthetic_data$OrigLogIncome, 0.975)
+
+L_i = max(L_s, L_o)
+U_i = min(U_s, U_o)
+
+I = (U_i - L_i) / (2 * (U_o - L_o)) + (U_i - L_i)/ (2 * (U_s - L_s))
+I
+```
+
+Since the interval overlap measure is close to 1 then we have a relatively high utility. 
