@@ -231,7 +231,7 @@ price <- bnbData$price
 ```
 
 ```{r, eval=FALSE}
-modelString <-"
+modelString_alt <-"
 model {
 ## sampling
 for (i in 1:N){
@@ -264,7 +264,9 @@ return(list(.RNG.seed=.RNG.seed,
 .RNG.name=.RNG.name))
 }
 
-posterior <- run.jags(modelString,
+require(runjags)
+
+posterior <- run.jags(modelString_alt,
                       n.chains = 1,
                       data = the_data,
                       monitor = c("z", "beta", "g"),

@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.14159265-2.6-0.99998 (TeX Live 2017) (preloaded format=xelatex 2017.5.23)  23 FEB 2020 22:03
+This is XeTeX, Version 3.14159265-2.6-0.99998 (TeX Live 2017) (preloaded format=xelatex 2017.5.23)  24 FEB 2020 16:59
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -846,16 +846,16 @@ LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <10> not available
 [1
 
 ]
-Underfull \vbox (badness 10000) detected at line 259
+Underfull \vbox (badness 10000) detected at line 260
  []
 
 [2] [3] [4] [5]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 575.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 598.
 [6]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 575.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 598.
 (./Methods-for-Utility-Evaluation.aux)
-Package atveryend Info: Empty hook `AtVeryEndDocument' on input line 575.
-Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 575.
+Package atveryend Info: Empty hook `AtVeryEndDocument' on input line 598.
+Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 598.
  ) 
 Here is how much of TeX's memory you used:
  21148 strings out of 493005
