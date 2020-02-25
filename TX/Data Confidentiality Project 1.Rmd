@@ -1,0 +1,189 @@
+---
+header-includes:
+- \usepackage{color}
+- \usepackage[dvipsnames]{xcolor}
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+----
+ Spring 2020: MATH 301-56 Data Confidentiality
+---
+
+```{r}
+library(readxl)
+library(ggplot2)
+library(runjags)
+library(coda)
+```
+
+```{r}
+project <- read_excel("Data Confidentiality Project Data.xlsx")
+```
+
+```{r}
+subset1 <- subset(project, GENDER == 2 & RACETH == 1 & DGRDG == 1 & OCEDRLP == 1 )
+summary(subset1)
+dim(subset1)[1]
+1/dim(subset1)[1]
+```
+Trying to find someone with similar traits as myself is quite difficult, but with more specific information, the disclore risk increases.
+
+```{r}
+modelString1 <-" 
+model { 
+## sampling 
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x[i] +beta2*z[i] + beta3*xx[i], invsigma2) 
+}
+
+## priors 
+beta0 ~ dnorm(mu0, g0) 
+beta1 ~ dbeta(mu1, g1)
+beta2 ~ dbeta(mu2, g2)
+beta3 ~ dbeta(mu3, g3)
+invsigma2 ~ dgamma(a, b) 
+sigma <- sqrt(pow(invsigma2, -1)) 
+} 
+"
+
+xx <- as.vector(project$RACETH)
+z <- as.vector(project$GENDER)
+y <- as.vector(project$DGRDG) 
+x <- as.vector(project$AGE)
+N <- length(y) 
+project_data <- list("y" = y, "x" = x, "z" = z, "xx" = xx, "N" = N, "mu0" = 0, "g0" = 0.0001, "mu1" = 1, "g1" = 1, "a" = 1, "b" = 1, "mu2" = 1, "g2"= 1, "mu3" = 1, "g3" = 1)
+initsfunction <- function(chain){ 
+  .RNG.seed <- c(1,2)[chain] 
+  .RNG.name <- c("base::Super-Duper", "base::Wichmann-Hill")[chain] 
+  return(list(.RNG.seed=.RNG.seed, .RNG.name=.RNG.name)) }
+
+project_posterior1 <- run.jags(modelString1, n.chains = 1, data = project_data, monitor = c("beta0", "beta1", "beta2", "beta3", "sigma"), adapt = 1000, burnin = 5000, sample = 5000, thin = 1, inits = initsfunction)
+
+```
+
+```{r}
+post1 <- as.mcmc(project_posterior)
+synthesize_multi <- function(X, Z, XX, index, n){ 
+  mean_Y <- post1[index, "beta0"] + X * post1[index, "beta1"] + Z * post1[index, "beta2"] + XX * post1[index, "beta3"]
+  synthetic_Y <- rnorm(n, mean_Y, post1[index, "sigma"]) 
+  data.frame(X, synthetic_Y) 
+  }
+
+n <- dim(project)[1] 
+synthetic_iteration_one <- synthesize_multi(project$AGE, project$GENDER, project$RACETH, 1, n) 
+names(synthetic_iteration_one) <- c("AGE", "DGRDG")
+```
+
+```{r}
+modelString2 <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}"
+y <- as.vector(project$EMSMI)
+x <- as.vector(synthetic_iteration_one$DGRDG)
+N <- length(y)
+the_data <- list("y" = y, "x" = x, "N" = N, "mu0" = 0, "g0" = 0.0001, "mu1" = 3, "g1" = 0.5, "a" = 1, "b" = 1)
+
+project_posterior2 <- run.jags(modelString2, n.chains = 1, data = the_data, monitor = c("beta0", "beta1", "sigma"), adapt = 1000, burnin = 5000, sample = 5000, thin = 50, inits = initsfunction)
+```
+
+```{r}
+post2 <- as.mcmc(project_posterior2)
+synthesize_one <- function(X, index, n){
+  mean_Y <- post2[index, "beta0"] + X * post2[index, "beta1"]
+  synthetic_Y <- rnorm(n, mean_Y, post2[index, "sigma"])
+  data.frame(X, synthetic_Y)
+}
+ 
+synthetic_iteration_two <- synthesize_one(project$EMSMI, 1, n)
+names(synthetic_two) <- c("DGRDG", "EMSMI")
+```
+
+```{r}
+modelString3 <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dbeta(mu1, g1)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}"
+y <- as.vector(project$OCEDRLP)
+x <- as.vector(synthetic_iteration_two$EMSMI)
+N <- length(y)
+the_data <- list("y" = y, "x" = x, "N" = N, "mu0" = 0, "g0" = 0.0001, "mu1" = 1, "g1" = 1, "a" = 1, "b" = 1)
+
+project_posterior3 <- run.jags(modelString3, n.chains = 1, data = the_data, monitor = c("beta0", "beta1", "sigma"), adapt = 1000, burnin = 5000, sample = 5000, thin = 50, inits = initsfunction)
+```
+
+```{r}
+post3 <- as.mcmc(project_posterior3)
+synthesize_one <- function(X, index, n){
+  mean_Y <- post3[index, "beta0"] + X * post3[index, "beta1"]
+  synthetic_Y <- rnorm(n, mean_Y, post3[index, "sigma"])
+  data.frame(X, synthetic_Y)
+}
+ 
+synthetic_iteration_three <- synthesize_one(project$OCEDRLP, 1, n)
+names(synthetic_three) <- c("EMSMI", "OCEDRLP")
+```
+
+```{r}
+post2 <- as.mcmc(project_posterior2)
+synthesize_one <- function(X, index, n){
+  mean_Y <- post2[index, "beta0"] + X * post2[index, "beta1"]
+  synthetic_Y <- rnorm(n, mean_Y, post2[index, "sigma"])
+  data.frame(X, synthetic_Y)
+}
+ 
+synthetic_iteration_two <- synthesize_one(project$EMSMI, 1, n)
+names(synthetic_two) <- c("DGRDG", "EMSMI")
+```
+
+```{r}
+modelString4 <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dbeta(mu1, g1)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}"
+y <- as.vector(project$SALARY)
+x <- as.vector(synthetic_iteration_three$OCEDRLP)
+N <- length(y)
+the_data <- list("y" = y, "x" = x, "N" = N, "mu0" = 0, "g0" = 0.0001, "mu1" = 1, "g1" = 1, "a" = 1, "b" = 1)
+
+project_posterior4 <- run.jags(modelString4, n.chains = 1, data = the_data, monitor = c("beta0", "beta1", "sigma"), adapt = 1000, burnin = 5000, sample = 5000, thin = 50, inits = initsfunction)
+```
+
+```{r}
+post4 <- as.mcmc(project_posterior4)
+synthesize_one <- function(X, index, n){
+  mean_Y <- post4[index, "beta0"] + X * post4[index, "beta1"]
+  synthetic_Y <- rnorm(n, mean_Y, post4[index, "sigma"])
+  data.frame(X, synthetic_Y)
+}
+ 
+synthetic_iteration_four <- synthesize_one(project$SALARY, 1, n)
+names(synthetic_four) <- c("EMSMI", "OCEDRLP")
+```
