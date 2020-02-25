@@ -1,0 +1,150 @@
+---
+title: "Project"
+author: "Kevin Ros"
+date: "2/22/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(coda)
+library(runjags)
+library(fastDummies)
+data_full = data.frame(read.csv("nhis_00001.csv",header=TRUE))
+
+data = data_full[0:5000,]
+data = data[!data$EARNIMPOINT1 == 0,]
+
+
+
+
+```
+
+# Exploring the dataset
+```{r}
+ggplot(data, aes(x = data$AGE)) + geom_histogram()
+ggplot(data, aes(x = data$SEX)) + geom_histogram()
+ggplot(data, aes(x = data$RACEA)) + geom_histogram()
+ggplot(data, aes(x = data$EDUCREC2)) + geom_histogram()
+ggplot(data, aes(x = data$HOURSWRK)) + geom_histogram()
+ggplot(data, aes(x = data$POORYN)) + geom_histogram()
+ggplot(data, aes(x = data$EARNIMPOINT1)) + geom_histogram()
+ggplot(data, aes(x = data$USUALPL)) + geom_histogram()
+ggplot(data, aes(x = data$DELAYCOST)) + geom_histogram()
+ggplot(data, aes(x = data$HINOTCOVE)) + geom_histogram()
+ggplot(data, aes(x = data$ALCDAYSWK)) + geom_histogram()
+ggplot(data, aes(x = data$CIGDAYMO)) + geom_histogram()
+ggplot(data, aes(x = data$HRSLEEP)) + geom_histogram()
+ggplot(data, aes(x = data$WORFREQ)) + geom_histogram()
+ggplot(data, aes(x = data$DEPFREQ)) + geom_histogram()
+```
+# Synthesizing Earnings
+
+```{r}
+# Using AGE, HOURSWRK, and EDUCREC2 to predict income
+# Binary columns for EDUCREC2
+data$EDU = fastDummies::dummy_cols(data$EDUCREC2)
+
+modelString <-"
+model {
+## sampling
+for (i in 1:N){
+  y[i] ~ dnorm(beta0 + beta1*x_age[i] + beta2*x_hours[i] +
+                                      beta3*x_edu_20[i] + beta4*x_edu_31[i] +
+                                      beta5*x_edu_41[i] + beta6*x_edu_51[i] +
+                                      beta7*x_edu_54[i] + beta8*x_edu_60[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+beta7 ~ dnorm(mu7, g7)
+beta8 ~ dnorm(mu8, g8)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+
+y = log(as.vector(data$EARNIMPOINT1))
+#`y[!is.finite(y)] <- 0
+x_age = as.vector(data$AGE)
+x_hours = as.vector(data$HOURSWRK)
+x_edu_20 = as.vector(data$EDU$.data_20)
+x_edu_31 = as.vector(data$EDU$.data_31)
+x_edu_41 = as.vector(data$EDU$.data_41)
+x_edu_51 = as.vector(data$EDU$.data_51)
+x_edu_54 = as.vector(data$EDU$.data_54)
+x_edu_60 = as.vector(data$EDU$.data_60)
+
+N = length(y) 
+
+the_data <- list("y" = y, "x_age" = x_age,
+                 "x_hours" = x_hours, "x_edu_20" = x_edu_20,
+                 "x_edu_31" = x_edu_31, "x_edu_41" = x_edu_41,
+                 "x_edu_51" = x_edu_51, "x_edu_54" = x_edu_54,
+                 "x_edu_60" = x_edu_60, 
+                 "N" = N,
+                 "mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+                 "mu6" = 0, "g6" = 1, "mu7" = 0, "g7" = 1,
+                 "mu8" = 0, "g8" = 1,
+                 "a" = 1, "b" = 1)
+
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+
+posterior_MLR <- run.jags(modelString,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "beta4", "beta5",
+                                  "beta6", "beta7", "beta8", "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 20,
+                      inits = initsfunction)
+summary(posterior_MLR)
+plot(posterior_MLR)
+
+```
+```{r}
+post <- as.mcmc(posterior_MLR)
+
+synthesize <- function(X, index, n){
+  mean_Y <- post[index, "beta0"] + X$x_age * post[index, "beta1"] + X$x_hours * post[index, "beta2"] + X$x_edu_20 * post[index, "beta3"] +  X$x_edu_31 * post[index, "beta4"] +                X$x_edu_41 * post[index,   "beta5"] +  X$x_edu_51 * post[index, "beta6"] +  X$x_edu_54 * post[index, "beta7"] + X$x_edu_60 * post[index, "beta8"]
+  synthetic_Y <- rnorm(n,mean_Y, post[index,"sigma"])
+  data.frame(X$y, synthetic_Y)
+}
+n <- dim(data)[1]
+params <- data.frame(y, x_age, x_hours, x_edu_20, x_edu_31, x_edu_41, x_edu_51, x_edu_54, x_edu_60)
+synthetic_one <- synthesize(params,1,n)
+names(synthetic_one) <- c("OriginalIncome", "SynIncome")
+```
+
+```{r}
+plot(synthetic_one$OriginalIncome, synthetic_one$SynIncome)
+```
+
+
+
+
+
+
+
