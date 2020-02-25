@@ -1,0 +1,251 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r}
+library(runjags)
+library(coda)
+library(ggplot2)
+library(dplyr)
+data<- read.csv("CEdata.csv")
+urban<- data$UrbanRural
+inc<- data$Income
+race<- data$Race
+exp<- data$Expenditure
+data$logexp<- log(data$Expenditure)
+data$loginc<- log(data$Income)
+data$rural= fastDummies::dummy_cols(data$UrbanRural)[,names(fastDummies::dummy_cols(data$UrbanRural))== ".data_1"]
+data$raceblack= fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_2"]
+data$racena= fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_3"]
+data$raceasian= fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_4"]
+data$racepi= fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_5"]
+data$racem= fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_6"]
+```
+
+```{r}
+modelString <-"
+model {
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_inc[i] + beta2*x_rural[i] +
+beta3*x_raceb[i] + beta4*x_racen[i] +
+beta5*x_racea[i] + beta6*x_racep[i] +
+beta7*x_racem[i], invsigma2)
+}
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+beta7 ~ dnorm(mu7, g7)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+y= as.vector(data$logexp)
+x_inc= as.vector(data$loginc)
+x_rural= as.vector(data$rural)
+x_raceb= as.vector(data$raceblack)
+x_racen= as.vector(data$racena)
+x_racea= as.vector(data$raceasian)
+x_racep= as.vector(data$racepi)
+x_racem= as.vector(data$racem)
+N= length(y) 
+```
+
+```{r}
+the_data<- list("y" = y, "x_inc"= x_inc,
+                 "x_rural"= x_rural, "x_raceb"= x_raceb,
+                 "x_racen"= x_racen, "x_racea"= x_racea,
+                 "x_racep" = x_racep, "x_racem" = x_racem,
+                 "N" = N,
+                 "mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+                 "mu6" = 0, "g6" = 1, "mu7" = 0, "g7" = 1,
+                 "a" = 1, "b" = 1)
+
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+posterior<- run.jags(modelString,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "beta4", "beta5",
+                                  "beta6", "beta7", "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 5,
+                      inits = initsfunction)
+posterior
+```
+
+```{r}
+post<- as.mcmc(posterior)
+```
+```{r}
+syn<- function(X, index, n){
+  mean_Y<- post[index, "beta0"] + X$x_inc * post[index, "beta1"] + X$x_rural * post[index, "beta2"] + X$x_raceb * post[index, "beta3"] +  X$x_racen * post[index, "beta4"] +  X$x_racea * post[index,   "beta5"] +  X$x_racep * post[index, "beta6"] +  X$x_racem * post[index, "beta7"]
+  syny<- rnorm(n,mean_Y, post[index,"sigma"])
+  data.frame(X$x_inc, syny)
+}
+```
+
+2i.
+```{r}
+set.seed(123)
+m<- 20
+n<- dim(data)[1]
+newsyn<- vector("list",m)
+new<- data.frame(x_inc, x_rural, x_raceb, x_racen, x_racea, x_racep, x_racem)
+for (i in 1:m){
+  synhe <- syn(new, 4980+i, n)
+  names(synhe) <- c("oriinc", "syninc")
+  newsyn[[i]] <- synhe
+}
+```
+
+ii.
+```{r}
+mean <- c()
+median <- c()
+variance <- c()
+for (i in 1:m){
+  mean[i] = mean(newsyn[[i]]$syninc)
+  median[i] = median(newsyn[[i]]$syninc)
+  variance[i] = var(newsyn[[i]]$syninc)
+  print(lm(data$logexp ~ newsyn[[i]]$syninc))
+}
+```
+iii
+```{r}
+bmean= sum(mean - sum(mean)/m)^2/(m-1)
+ubar= sum(var(mean))/m
+tmean= (1 + (m^(-1)))*bmean - ubar
+qbar= sum(mean)/m
+qbar
+tmean
+```
+
+```{r}
+u_median = var(median)
+qbar_median = sum(median)/m
+b_median = sum(median - qbar_median)^2/(m-1)
+ubar_median = sum(u_median)/m
+T_median = (1 + (m^-1))*b_median - ubar_median
+qbar_median
+T_median
+```
+
+```{r}
+u_var = var(variance)
+qbar_var = sum(variance)/m
+b_var = sum(variance - qbar_var)^2/(m-1)
+ubar_var = sum(u_var)/m
+T_var = (1 + (m^-1))*b_var - ubar_var
+qbar_var
+T_var
+```
+
+3.
+```{r}
+ls = quantile(newsyn[[1]]$syninc, 0.025)
+us = quantile(newsyn[[1]]$syninc, 0.975)
+lo = quantile(newsyn[[1]]$oriinc, 0.025)
+uo = quantile(newsyn[[1]]$oriinc, 0.975)
+l = max(ls, lo)
+u = min(us, uo)
+interval = (u - l) / (2 * (uo - lo)) + (u - l)/ (2 * (us - ls))
+interval
+```
+
+4.
+```{r}
+data2<- read.csv("frmgham2.csv")
+data2$sexd= fastDummies::dummy_cols(data2$SEX)[,names(fastDummies::dummy_cols(data2$SEX))== ".data_1"]
+data2$educhs= fastDummies::dummy_cols(data2$educ)[,names(fastDummies::dummy_cols(data2$educ)) == ".data_2"]
+data2$educsc= fastDummies::dummy_cols(data2$educ)[,names(fastDummies::dummy_cols(data2$educ)) == ".data_3"]
+data2$educc= fastDummies::dummy_cols(data2$educ)[,names(fastDummies::dummy_cols(data2$educ)) == ".data_4"]
+data2 <- na.omit(data2)
+```
+```{r}
+modelString2 <-"
+model {
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_age[i] + beta2*x_sexd[i] +
+beta3*x_educhs[i] + beta4*x_educsc[i] +
+beta5*x_educc[i], invsigma2)
+}
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+y= as.vector(data2$BMI)
+x_age= as.vector(data2$AGE)
+x_sexd= as.vector(data2$sexd)
+x_educhs= as.vector(data2$educhs)
+x_educsc= as.vector(data2$educsc)
+x_educc= as.vector(data2$educc)
+N= length(y) 
+```
+
+```{r}
+the_data<- list("y" = y, "x_age"= x_age,
+                 "x_sexd"= x_sexd, "x_educhs"= x_educhs,
+                 "x_educsc"= x_educsc, "x_educc"= x_educc,
+                 "N" = N,
+                 "mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+                 "a" = 1, "b" = 1)
+
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+posterior<- run.jags(modelString2,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "beta4", "beta5",
+                                  "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+posterior
+```
+```{r}
+post<- as.mcmc(posterior)
+syn<- function(X, index, n){
+  mean_Y<- post[index, "beta0"] + X$x_age * post[index, "beta1"] + X$x_sexd * post[index, "beta2"] + X$x_educhs * post[index, "beta3"] +  X$x_educsc * post[index, "beta4"] +  X$x_educc * post[index,   "beta5"]
+  syny<- rnorm(n,mean_Y, post[index,"sigma"])
+  data.frame(X$x_age, syny)
+}
+n<- dim(data2)[1]
+frame<- data.frame(y, x_age, x_sexd, x_educhs, x_educsc, x_educc)
+syndata<- syn(frame, 1, n)
+names(syndata)<- c("oribmi", "synbmi")
+```
+```{r}
+ggplot(syndata, aes(x= oribmi, y= synbmi)) + geom_point(size = 1)
+```
+
