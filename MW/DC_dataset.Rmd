@@ -1,0 +1,237 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+AP VoteCast is a survey of the American electorate conducted in all 50 states by NORC at the University of Chicago for The Associated Press and Fox News. The survey is funded by AP. The survey of 138,929 registered voters was conducted October 29 to November 6, 2018, concluding as polls closed on Election Day. Interviews were conducted via phone and web, with 11,059 completing by phone and 127,870 completing by web.
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(fastDummies)
+knitr::opts_chunk$set(echo = TRUE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+require(runjags)
+require(coda)
+```
+
+```{r}
+data <- read.csv("voting.csv")
+```
+
+```{r}
+data$RACETH5 <- recode(data$RACETH5, "(1) White" = 1, "(2) African American or Black" = 2, "(3) Latino or Hispanic" = 3, "(4) Asian" = 4, "(5) Other" = 5, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$RACETH <- NULL
+data$EDUC <- recode(data$EDUC, "(1) High school or less" = 1, "(2) Some college/assoc. degree" = 2, "(3) College graduate" = 3, "(4) Postgraduate study" = 4, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$INCOME <- recode(data$INCOME, "(1) Under $25,000" = 1, "(2) $25,000-$49,999" = 2, "(3) $50,000-$74,999" = 3, "(4) $75,000-$99,999" = 4, "(5) $100,000 or more" = 5, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$SEX <- recode(data$SEX, "(1) Men" = 1, "(2) Women" =2, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$AGE <- recode(data$AGE65, "(1) 18-24" = 1, "(2) 25-29" = 2, "(3) 30-39" = 3, "(4) 40-49" = 4, "(5) 50-64" = 5, "(6) 65+" = 6, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$AGE65 <- NULL
+data$RELIG <- recode(data$RELIG, "(1) Protestant" = 1, "(2) Catholic" = 2, "(3) Mormon" = 3, "(4) Other Christian" = 4, "(5) Jewish" = 5, "(6) Muslim" = 6, "(7) Something else" = 7, "(8) None" = 8, "(88) REMOVED FOR DISCLOSURE RISK" = 88, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$PARTY <- NULL
+data$PARTY <- recode(data$PARTYFULL, "(1) Democrat/Lean Dem" = 1, "(2) Republican/Lean Rep" =2, "(3) Independent" = 3)
+data$PARTYFULL <- NULL
+data$IDEO <- recode(data$IDEO, "(1) Very liberal" = 1, "(2) Somewhat liberal" = 2, "(3) Moderate" = 3, "(4) Somewhat conservative" = 4, "(5) Very conservative" = 5, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$RELIG <- recode(data$RELIG4, "(1) Protestant/Other Christian" = 1, "(2) Catholic"= 2, "(3) Other" =3, "(4) Unaffiliated" = 4, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$RELIG4 <- NULL
+data$FORMFLAG <- NULL
+```
+
+```{r}
+data[1:5,]
+```
+
+```{r}
+data <- data %>% filter(IDEO<99)
+IDEO_data <- c()
+for (i in 1:5){
+  IDEO_data[i] <- sum(data$IDEO==i)
+}
+lbls <- c("(1) Very liberal", "(2) Somewhat liberal", "(3) Moderate", "(4) Somewhat conservative", "(5) Very conservative")
+df <- data.frame(
+  group = lbls,
+  value = IDEO_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+data <- data %>% filter(AGE<99)
+AGE_data <- c()
+for (i in 1:6){
+  AGE_data[i] <- sum(data$AGE==i)
+}
+lbls <- c("(1) 18-24",
+"(2) 25-29",
+"(3) 30-39",
+"(4) 40-49",
+"(5) 50-64",
+"(6) 65+")
+df <- data.frame(
+  group = lbls,
+  value = AGE_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+data <- data %>% filter(EDUC<88)
+EDUC_data <- c()
+for (i in 1:4){
+  EDUC_data[i] <- sum(data$EDUC==i)
+}
+lbls <- c("(1) High school or less",
+"(2) Some college/assoc. degree",
+"(3) College graduate",
+"(4) Postgraduate study")
+df <- data.frame(
+  group = lbls,
+  value = EDUC_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+data <- data %>% filter(RACETH5<88)
+RACE_data <- c()
+for (i in 1:5){
+  RACE_data[i] <- sum(data$RACETH5==i)
+}
+lbls <- c("(1) White",
+"(2) African American or Black",
+"(3) Latino or Hispanic",
+"(4) Asian",
+"(5) Other")
+df <- data.frame(
+  group = lbls,
+  value = RACE_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+data <- data %>% filter(PARTY<88)
+PAR_data <- c()
+for (i in 1:3){
+  PAR_data[i] <- sum(data$PARTY==i)
+}
+lbls <- c("(1) Democrat/Lean Dem", "(2) Republican/Lean Rep", "(3) Independent")
+df <- data.frame(
+  group = lbls,
+  value = PAR_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+data <- data %>% filter(INCOME<88)
+INC_data <- c()
+for (i in 1:5){
+  INC_data[i] <- sum(data$INCOME==i)
+}
+lbls <- c("(1) Under $25,000",
+"(2) $25,000-$49,999",
+"(3) $50,000-$74,999",
+"(4) $75,000-$99,999",
+"(5) $100,000 or more")
+df <- data.frame(
+  group = lbls,
+  value = INC_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+data <- data %>% filter(RELIG<88)
+REL_data <- c()
+for (i in 1:4){
+  REL_data[i] <- sum(data$RELIG==i)
+}
+lbls <- c("(1) Protestant/Other Christian",
+"(2) Catholic",
+"(3) Other",
+"(4) Unaffiliated")
+df <- data.frame(
+  group = lbls,
+  value = REL_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+table(data$IDEO, data$RACETH5)
+table(data$IDEO, data$AGE)
+table(data$IDEO, data$EDUC)
+table(data$IDEO, data$INCOME)
+table(data$IDEO, data$RELIG)
+```
+
+The group with the most conservative ideology is exposed to the greatest disclosure risk, across differenet demographic variables.
+
+```{r}
+vcons <- data %>% filter(IDEO==5)
+table(vcons$EDUC, vcons$RELIG)
+table(vcons$INCOME, vcons$SEX)
+```
+
+```{r}
+table(data$PARTY, data$IDEO)
+```
+
+
+
+```{r}
+modelString <-"
+model {
+## sampling
+for (i in 1:N){
+   y[i] ~ dmulti(p[i,1:C],1)
+   for (c in 1:C){
+     p[i,c] <- q[i,c]/sum(q[i,])
+     log(q[i,c]) <- beta0[c] + beta1[c]*x[i]
+   }
+}
+## priors
+beta0[1] <- 0
+beta1[1] <- 0
+for (c in 2:C){
+  beta0[c] ~ dnorm(0, 0.00001)
+  beta1[c] ~ dnorm(0, 0.00001)
+}
+}
+"
+```
+
+```{r}
+y = as.vector(data$IDEO)
+x = as.vector(data$INCOME)
+N = length(y)  
+C = 5
+```
+
+```{r message = FALSE, size = "footnotesize"}
+the_data <- list("y" = y, 
+                 "x" = x,
+                 "N" = N,
+                 "C" = C)
+```
+
+```{r message = FALSE, size = "footnotesize"}
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+```
+
+
+
