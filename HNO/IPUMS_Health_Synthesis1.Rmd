@@ -1,0 +1,208 @@
+---
+title: "IPUMS Health Data"
+author: "Henrik Olsson"
+date: "February 25, 2020"
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    df_print: paged
+subtitle: MATH 301 Data Confidentiality
+---
+```{r include=FALSE}
+library(readr)
+library(LearnBayes)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(runjags)
+library(coda)
+library(imputeTS)
+library(fastDummies)
+library(tinytex)
+```
+
+```{r}
+ipumsdata1<- read.csv("nhis_00001.csv")
+ipumsdata1$income <- log(ipumsdata1$EARNIMPOINT1)
+
+ipumsdata <- sample_n(ipumsdata1, 10000, replace = FALSE, prob = NULL)
+ipumsdata <- ipumsdata[!ipumsdata$EARNIMPOINT1 ==0, ]
+ipumsdata$EARNIMPOINT1<- log(ipumsdata$EARNIMPOINT1)
+head(ipumsdata)
+```
+
+Our goal is to generate synthetic data from the estimated Bayesian synthesizer from the posterior predictive distribution. To produce a good synthesizer, there will be trade-offs between utility and risks. 
+
+The two most sensitive variables are Person's imputed total earnings from the previous calender year and total hours worked last week or usually. The latter contains 99 categories, while the former contains 70 categories. 
+If an intruder were to know one's total earnings or amount of work time then they can obtain the person's information with much greater probability than if they had access to another variable. 
+
+
+```{r include=FALSE}
+## Remove missing observations 
+na.remove(ipumsdata$AGE)
+na.remove(ipumsdata$SEX)
+na.remove(ipumsdata$RACEA)
+na.remove(ipumsdata$EDUCREC2)
+na.remove(ipumsdata$HOURSWRK)
+na.remove(ipumsdata$POORYN)
+na.remove(ipumsdata$INCWAGE)
+na.remove(ipumsdata$EARNIMP1)
+na.remove(ipumsdata$EARNIMPOINT1)
+na.remove(ipumsdata$USUALPL)
+na.remove(ipumsdata$DELAYCOST)
+na.remove(ipumsdata$HINOTCOVE)
+na.remove(ipumsdata$ALCDAYSWK)
+na.remove(ipumsdata$CIGDAYMO)
+na.remove(ipumsdata$HRSLEEP)
+na.remove(ipumsdata$WORFREQ)
+na.remove(ipumsdata$DEPFREQ)
+```
+
+
+
+First, lets look at the relationship between frequency drank alcohol in past year, how often feel worried, nervous, or anxious, and health care coverage.
+
+```{r include=FALSE}
+## create indicator variable for Alcohol consumption in past year 
+## create indicator variables for how often feel worried, nervous, or anxious
+## create indicator variables for healthcare coverage
+ipumsdata$ALC = fastDummies::dummy_cols(ipumsdata$ALCDAYSWK)
+ipumsdata$WORRY = fastDummies::dummy_cols(ipumsdata$WORFREQ)
+ipumsdata$HEALTH = fastDummies::dummy_cols(ipumsdata$HINOTCOVE)
+```
+
+```{r}
+## JAGS script
+modelString <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_alc_one[i] +
+beta2*x_alc_two[i] + beta3*x_alc_three[i] +
+beta4*x_alc_four[i] + beta5*x_alc_five[i] +
+beta6*x_alc_six[i] + beta7*x_alc_seven[i] +
+beta8*x_alc_none[i] + beta9*x_wor_daily[i] +
+beta10*x_wor_weekly[i] + beta11*x_wor_monthly[i] +
+beta12*x_wor_fewtimes[i] + beta13*x_wor_never[i] +
+beta14*x_hr_sleep[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+beta7 ~ dnorm(mu7, g7)
+beta8 ~ dnorm(mu8, g8)
+beta9 ~ dnorm(mu9, g9)
+beta10 ~ dnorm(mu10, g10)
+beta11 ~ dnorm(mu11, g11)
+beta12 ~ dnorm(mu12, g12)
+beta13 ~ dnorm(mu13, g13)
+beta14 ~ dnorm(mu14, g14)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}"
+```
+
+```{r}
+y = as.vector(ipumsdata$EARNIMPOINT1)
+x_alc_one = as.vector(ipumsdata$ALC$.data_0)
+x_alc_two = as.vector(ipumsdata$ALC$.data_80)
+x_alc_three = as.vector(ipumsdata$ALC$.data_96)
+x_alc_four = as.vector(ipumsdata$ALC$.data_10)
+x_alc_five = as.vector(ipumsdata$ALC$.data_70)
+x_alc_six = as.vector(ipumsdata$ALC$.data_30)
+x_alc_seven = as.vector(ipumsdata$ALC$.data_50)
+x_alc_none = as.vector(ipumsdata$ALC$.data_20)
+x_wor_daily = as.vector(ipumsdata$WORRY$.data_0)
+x_wor_weekly = as.vector(ipumsdata$WORRY$.data_5)
+x_wor_monthly = as.vector(ipumsdata$WORRY$.data_1)
+x_wor_fewtimes = as.vector(ipumsdata$WORRY$.data_2)
+x_wor_never = as.vector(ipumsdata$WORRY$.data_4)
+x_hr_sleep = as.vector(ipumsdata$HEALTH$.data_1)
+N = length(y) # Compute the number of observations
+
+
+## Pass the data and hyperparameter values to JAGS
+the_data <- list("y" = y,
+"x_alc_one" = x_alc_one, "x_alc_two" = x_alc_two,
+"x_alc_three" = x_alc_three, "x_alc_four" = x_alc_four,
+"x_alc_five" = x_alc_five, "x_alc_six" = x_alc_six,
+"x_alc_seven" = x_alc_seven, "x_alc_none" = x_alc_none,
+"x_wor_daily" = x_wor_daily, "x_wor_weekly" = x_wor_weekly,
+"x_wor_monthly" = x_wor_monthly, "x_wor_fewtimes" = x_wor_fewtimes,
+"x_wor_never" = x_wor_never, "x_hr_sleep" = x_hr_sleep,
+"N" = N,
+"mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+"mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+"mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+"mu6" = 0, "g6" = 1, "mu7" = 0, "g7" = 1,
+"mu8" = 0, "g8" = 1, "mu9" = 0, "g9" = 1,
+"mu10" = 0, "g10" = 1, "mu11" = 0, "g11" = 1,
+"mu12" = 0, "g12" = 1, "mu13" = 0, "g13" = 1,
+"mu14" = 0, "g14" = 1, "a" = 1, "b" = 1)
+```
+
+
+```{r}
+initsfunction <- function(chain){
+.RNG.seed <- c(1,2)[chain]
+.RNG.name <- c("base::Super-Duper",
+"base::Wichmann-Hill")[chain]
+return(list(.RNG.seed=.RNG.seed,
+.RNG.name=.RNG.name))
+}
+```
+
+```{r warning=FALSE}
+## Run the JAGS code for this model:
+posterior_MLR <- run.jags(modelString,
+n.chains = 1,
+data = the_data,
+monitor = c("beta0", "beta1", "beta2",
+"beta3", "beta4", "beta5",
+"beta6", "beta7", "beta8", "beta9", "beta10",
+"beta11", "beta12", "beta13", "beta14", "sigma"),
+adapt = 1000,
+burnin = 5000,
+sample = 5000,
+thin = 10,
+inits = initsfunction)
+## JAGS output 
+summary(posterior_MLR)
+```
+
+```{r}
+plot(posterior_MLR, vars = "beta1")
+```
+
+```{r}
+## Saving posterior parameter draws
+post <- as.mcmc(posterior_MLR)
+
+## Generating one set of sythetic data
+synthesize <- function(X, index, n){
+  mean_Y <- post[index, "beta0"] +  X$x_alc_one * post[index, "beta1"] +  X$x_alc_two * post[index, "beta2"] +  X$x_alc_three * post[index, "beta3"] +  X$x_alc_four * post[index, "beta4"] +  X$x_alc_five * post[index, "beta5"] +  X$x_alc_six * post[index, "beta6"] +  X$x_alc_seven * post[index, "beta7"] +  X$x_alc_none * post[index, "beta8"] +  X$x_wor_daily * post[index, "beta9"] +  X$x_wor_weekly * post[index, "beta10"] +  X$x_wor_monthly * post[index, "beta11"] +  X$x_wor_fewtimes * post[index, "beta12"] +  X$x_wor_never * post[index, "beta13"] +  X$x_hr_sleep * post[index, "beta14"] 
+  synthetic_Y <- rnorm(n, mean_Y, post[index, "sigma"])
+  data.frame(X$y, synthetic_Y)
+}
+n <- dim(ipumsdata)[1]
+new <- data.frame(y, x_alc_one, x_alc_two, x_alc_three, x_alc_four, x_alc_five, x_alc_six, x_alc_seven, x_alc_none, x_wor_daily, x_wor_weekly, x_wor_monthly, x_wor_fewtimes, x_wor_never, x_hr_sleep)
+synthetic_one <- synthesize(new, 1, n)
+names(synthetic_one) <- c("OrigLogIncome", "SynLogIncome")
+```
+
+```{r}
+ggplot(synthetic_one, aes(x = OrigLogIncome, y = SynLogIncome)) + 
+  geom_point(size = 1) + 
+  labs(title = "Scatter plot of Synthetic log(Income) vs log(Income)") +
+  theme_bw(base_size = 6, base_family = "")
+```
+
+
+
+
