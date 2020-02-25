@@ -1,0 +1,317 @@
+---
+title: 'Assignment #03'
+author: "Yitong Wu"
+date: "February 18, 2020"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+(a) Use your own synthesis model to synthesize m = 1 synthetic dataset for the CE sample.
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(fastDummies)
+knitr::opts_chunk$set(echo = TRUE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+require(runjags)
+require(coda)
+```
+
+```{r}
+data <- read.csv("CEdata.csv")
+data$Rural = fastDummies::dummy_cols(data$UrbanRural)[,names(fastDummies::dummy_cols(data$UrbanRural)) == ".data_2"]
+data$Race_Black = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_2"]
+data$Race_NA = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_3"]
+data$Race_Asian = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_4"]
+data$Race_PI = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_5"]
+data$Race_M = fastDummies::dummy_cols(data$Race)[,names(fastDummies::dummy_cols(data$Race)) == ".data_6"]
+data$logInc <- log(data$Income)
+```
+
+```{r message = FALSE, size = "footnotesize"}
+modelString <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_rural[i] +
+beta2*x_race_B[i] + beta3*x_race_N[i] +
+beta4*x_race_A[i] + beta5*x_race_P[i] + beta6*x_race_M[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+```
+
+```{r}
+y = as.vector(data$logInc)
+x_rural = as.vector(data$Rural)
+x_race_B = as.vector(data$Race_Black)
+x_race_N = as.vector(data$Race_NA)
+x_race_A = as.vector(data$Race_Asian)
+x_race_P = as.vector(data$Race_PI)
+x_race_M = as.vector(data$Race_M)
+N = length(y)  
+```
+
+```{r message = FALSE, size = "footnotesize"}
+the_data <- list("y" = y, 
+                 "x_rural" = x_rural, "x_race_B" = x_race_B,
+                 "x_race_N" = x_race_N, "x_race_A" = x_race_A,
+                 "x_race_P" = x_race_P, "x_race_M" = x_race_M,
+                 "N" = N,
+                 "mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+                 "mu6" = 0, "g6" = 1, 
+                 "a" = 1, "b" = 1)
+```
+
+```{r message = FALSE, size = "footnotesize"}
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+```
+
+```{r message = FALSE, size = "footnotesize", results = 'hide'}
+posterior_MLR <- run.jags(modelString,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "beta4", "beta5",
+                                  "beta6", "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+```
+
+```{r message=FALSE, size = "footnotesize"}
+post <- as.mcmc(posterior_MLR)
+```
+
+```{r message=FALSE, size = "footnotesize"}
+synthesize <- function(X_rural, X_RB, X_RN, X_RA, X_RP, X_RM, index, n){
+  mean_Y <- post[index, "beta0"] +  X_rural * post[index, "beta1"] + X_RB * post[index, "beta2"] + X_RN * post[index, "beta3"] + X_RA * post[index, "beta4"] + X_RP * post[index, "beta5"] + X_RM * post[index, "beta6"]
+  synthetic_Y <- rnorm(n, mean_Y, post[index, "sigma"])
+  data.frame(synthetic_Y, X_rural, X_RB, X_RN, X_RA, X_RP, X_RM)
+}
+```
+
+```{r}
+n <- dim(data)[1]
+Syndata <- synthesize(data$Rural, data$Race_Black, data$Race_NA, data$Race_Asian, data$Race_PI, data$Race_M, 1, n)
+names(Syndata) <- c("logInc", "Rural", "RB", "RN", "RA", "RP", "RM")
+```
+
+(b) Make a scatter plot of the synthesized log(Income) against the original log(Income), and see what you find.
+
+```{r}
+Synthesis <- cbind(data$logInc, Syndata$logInc)
+Synthesis <- data.frame(Synthesis)
+names(Synthesis) <- c("Orig", "Syn")
+```
+
+```{r}
+ggplot(Synthesis, aes(x=Orig, y=Syn)) + geom_point()
+```
+
+(b) Compare the mean and median of log(Income), in the original dataset and the confidential dataset. Are they close to each other?
+```{r}
+mean(Synthesis$Orig)
+median(Synthesis$Orig)
+mean(Synthesis$Syn)
+median(Synthesis$Syn)
+```
+
+(c) Compare the point estimate of the regression coefficients of log(Income) on log(Expenditure), in the original dataset and the confidential dataset. Are they close to each other?
+```{r}
+Synthesis <- cbind(Synthesis, log(data$Expenditure))
+names(Synthesis) <- c("Orig", "Syn", "Ex")
+model_orig <- lm(Orig ~ Ex, data=Synthesis)
+model_syn <- lm(Syn ~ Ex, data=Synthesis)
+summary(model_orig)
+summary(model_syn)
+```
+
+(d) Evaluate the global utility measures of your synthesized log(Income) from your Bayesian synthesis model for the CE sample.
+
+```{r}
+Oridata <- cbind(data$logInc, data$Rural,data$Race_Black,data$Race_NA,data$Race_Asian,data$Race_PI,data$Race_M)
+Oridata <- data.frame(Oridata)
+names(Oridata) <- c("logInc", "Rural", "RB", "RN", "RA", "RP", "RM")
+merged_data <- rbind(Oridata, Syndata)
+merged_data$T <- c(rep(0,994),rep(1,994))
+```
+
+I. Propensity Score Measure
+```{r}
+log_reg <- glm(T ~ logInc + as.factor(Rural) + as.factor(RB) + as.factor(RN) + as.factor(RA) + as.factor(RP) + as.factor(RM), family="binomial",data=merged_data)
+summary(log_reg)
+pred <- predict(log_reg, data=merged_data)
+probs <- exp(pred)/(1+exp(pred))
+Up <- 1/(2*n)*sum((probs-1/2)^2)
+Up
+```
+
+II. Cluster Analysis Measure
+
+```{r}
+clusters <- hclust(dist(merged_data[,1:2]), method='average')
+```
+
+```{r}
+ClusterAnalysis <- function(G){
+  clusterCut <- cutree(clusters, G)
+  cluster_T <- as.data.frame(cbind(clusterCut, merged_data$T))
+  names(cluster_T) <- c("cluster", "T")
+  table(cluster_T)
+  n_gS <- table(cluster_T)[,1]
+  n_g <- rowSums(table(cluster_T))
+  w_g <- n_g/(2*n)
+  Uc <- (1/G)*sum(w_g*(n_gS/n_g-1/2)^2)
+  Uc
+}
+```
+
+```{r}
+ClusterAnalysis(3)
+ClusterAnalysis(5)
+ClusterAnalysis(10)
+ClusterAnalysis(15)
+ClusterAnalysis(20)
+```
+
+III. Empirical CDF Measure
+
+```{r}
+ecdf_ori <- ecdf(Oridata[,"logInc"])
+ecdf_syn <- ecdf(Syndata[,"logInc"])
+percentile_ori <- ecdf_ori(merged_data[,"logInc"])
+percentile_syn <- ecdf_syn(merged_data[,"logInc"])
+```
+
+```{r}
+ecdf_diff <- percentile_ori-percentile_syn
+Um <- max(abs(ecdf_diff))
+Um
+```
+
+```{r}
+Ua <- mean(ecdf_diff^2)
+Ua
+```
+
+**Drechsler (2001)**
+
+i. Generate m = 20 synthetic datasets given your synthesis model for the CE sample. If you are using set.seed(), make sure that you do not generate the same synthetic data for each m = 20.
+
+```{r}
+Syn_sets <- NULL
+n <- dim(data)[1]
+Syn_sets <- cbind(data$Rural,data$Race_Black, data$Race_NA, data$Race_Asian, data$Race_PI, data$Race_M)
+Syn_sets <- data.frame(Syn_sets)
+names(Syn_sets) <- c("Rural", "RB", "RN", "RA", "RP", "RM")
+synthesize <- function(X_rural, X_RB, X_RN, X_RA, X_RP, X_RM, index, n){
+  mean_Y <- post[index, "beta0"] +  X_rural * post[index, "beta1"] + X_RB * post[index, "beta2"] + X_RN * post[index, "beta3"] + X_RA * post[index, "beta4"] + X_RP * post[index, "beta5"] + X_RM * post[index, "beta6"]
+  synthetic_Y <- rnorm(n, mean_Y, post[index, "sigma"])
+  data.frame(synthetic_Y)
+}
+```
+
+```{r}
+for (i in 1:20) {
+  Syndata <- synthesize(data$Rural, data$Race_Black, data$Race_NA, data$Race_Asian, data$Race_PI, data$Race_M, i, n)
+  Syn_sets <- cbind(Syn_sets, Syndata$synthetic_Y)
+  names(Syn_sets[,6+i]) <- c(paste("syn",as.character(i)))
+}
+```
+
+ii. Estimate a few analysis-specific utility measures, e.g. the mean and median of a continuous synthetic variable, the regression analysis coefficients, for each synthetic dataset.
+
+```{r}
+Syn_sets <- cbind(Syn_sets, data$logInc, log(data$Expenditure))
+names(Syn_sets) <- c("Rural", "RB", "RN", "RA", "RP", "RM","m1","m2","m3","m4","m5","m6","m7","m8",
+                     "m9","m10","m11","m12","m13","m14","m15","m16","m17","m18","m19","m20","ori","ex")
+mean <- c()
+median <- c()
+coeff <- c()
+pVal <- c()
+variance <- c()
+for (i in 1:21) {
+  Syn_sets$target <- Syn_sets[,i+6]
+  mean<- append(mean, mean(Syn_sets$target))
+  median <- append(median, median(Syn_sets$target))
+  lr <- lm(target ~ ex, data=Syn_sets)
+  coe <- summary(lr)$coefficients[2, 1]
+  coeff <- append(coeff, coe)
+  pvalue <- summary(lr)$coefficients[2, 4]
+  pVal <- append(pVal, pvalue)
+  variance <- append(variance, var(Syn_sets$target))
+}
+Analysis <- cbind(mean, median, coeff, pVal, variance)
+Analysis <- data.frame(Analysis)
+names(Analysis) <- c("mean","median","coeff","pVal", "variance")
+Analysis
+```
+
+iii. Use the combining rules in Drechsler 2001 Chapter 6-1 (for fully synthetic data) and / or Drechsler 2001 Chapter 7-1 (for partially synthetic data) and create your final point estimate and confidence interval of the analysis-specific utility measures you calculated in Item ii above.
+
+For mean:
+```{r}
+qm <- sum(Analysis[1:20,1])/20
+bm <- sum((Analysis[1:20,1]-qm)^2)/(20-1)
+um <- sum(Analysis[1:20,5])/20
+```
+
+```{r}
+qm
+bm
+um
+qm+1.645*bm
+qm-1.645*bm
+```
+
+The final point estimate is then 10.59, with a 90% confidence interval of [10.588,10.594].
+
+**Drechsler, J. and Reiter, J. P. (2009)**
+
+i. Calcuate the corresponding interval overlap measure for each of the analysis-specific utility measures you have done in Item 2.ii above.
+
+```{r}
+var_syn <- sum(Analysis[1:20,5])/20
+var_ori <- sum(Analysis[21,5])
+mean_syn <- sum(Analysis[1:20,1])/20
+mean_ori <- sum(Analysis[21,1])
+```
+
+```{r}
+mean_syn + 1.645*var_syn
+mean_syn - 1.645*var_syn
+mean_ori + 1.645*var_ori
+mean_ori - 1.645*var_ori
+```
+
+```{r}
+(12.81-8.37)/(2*(12.78-8.41))+(12.81-8.37)/(2*(12.81-8.37))
+```
+
