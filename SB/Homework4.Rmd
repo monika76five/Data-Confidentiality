@@ -1,0 +1,231 @@
+---
+title: "Homework4"
+author: "Sarah Boese"
+date: "2/23/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r, message = FALSE}
+library(ProbBayes)
+library(dplyr)
+library(ggplot2)
+require(gridExtra)
+library(reshape)
+library(runjags)
+library(coda)
+library(tidyverse)
+library(fastDummies)
+crcblue <- "#2905a1"
+```
+
+```{r}
+CESample <- read.csv("CEsample2.csv")
+```
+
+I decided that I wanted to use all variables within CESampe logExpenditure, UrbanRural, Race) as estimators for logIncome. Thus, I used a Multilinear regression model in which I scaled Log Income and Log Expenditure by centering at 0 and dividing by standard deviation. I use the following MLR model (where * denotes a standardized continuous variable): 
+
+\begin{eqnarray}
+Y_i^* \mid \beta_0, \beta_1, \cdots, \beta_7, \sigma, \mathbf{x}_i^* \overset{ind}{\sim} \textrm{Normal}(\beta_0 &+& \beta_1 x^*_{i, expenditure} + \beta_2 x_{i, rural} \nonumber \\
+&+& \beta_3 x_{i, race_B} +  \beta_4 x_{i, race_N} \nonumber \\
+&+& \beta_5 x_{i, race_A} + \beta_6 x_{i, race_P} \nonumber \\
+&+& \beta_7 x_{i, race_M}, \sigma). \nonumber \\
+\end{eqnarray}
+
+
+```{r}
+CESample <- CESample %>%
+  mutate(LogTotalIncome = log(TotalIncomeLastYear))
+CESample <- CESample %>%
+  mutate(LogTotalExp = log(TotalExpLastQ))
+```
+
+
+```{r message = FALSE}
+CESample$Log_TotalExpSTD <- scale(CESample$LogTotalExp)
+CESample$Log_TotalIncomeSTD <- scale(CESample$LogTotalIncome)
+## create indictor variable for Rural
+CESample$Rural = fastDummies::dummy_cols(CESample$UrbanRural)[,names(fastDummies::dummy_cols(CESample$UrbanRural))
+ == ".data_2"]
+```
+
+```{r message = FALSE}
+## create indicator variables for Black (2), Native American (3), 
+## Asian (4), Pacific Islander (5), and Multi-race (6)
+CESample$Race_Black = fastDummies::dummy_cols(CESample$Race)[,names(fastDummies::dummy_cols(CESample$Race)) == ".data_2"]
+CESample$Race_NA = fastDummies::dummy_cols(CESample$Race)[,names(fastDummies::dummy_cols(CESample$Race)) == ".data_3"]
+CESample$Race_Asian = fastDummies::dummy_cols(CESample$Race)[,names(fastDummies::dummy_cols(CESample$Race)) == ".data_4"]
+CESample$Race_PI = fastDummies::dummy_cols(CESample$Race)[,names(fastDummies::dummy_cols(CESample$Race)) == ".data_5"]
+CESample$Race_M = fastDummies::dummy_cols(CESample$Race)[,names(fastDummies::dummy_cols(CESample$Race)) == ".data_6"]
+```
+
+```{r message = FALSE}
+modelString <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_exp[i] + beta2*x_rural[i] +
+beta3*x_race_B[i] + beta4*x_race_N[i] +
+beta5*x_race_A[i] + beta6*x_race_P[i] +
+beta7*x_race_M[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+beta7 ~ dnorm(mu7, g7)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+```
+
+- Pass the data and hyperparameter values to JAGS:
+
+```{r message = FALSE}
+y_income = as.vector(CESample$LogTotalIncome)
+x_exp = as.vector(CESample$LogTotalExp)
+x_rural = as.vector(CESample$Rural)
+x_race_B = as.vector(CESample$Race_Black)
+x_race_N = as.vector(CESample$Race_NA)
+x_race_A = as.vector(CESample$Race_Asian)
+x_race_P = as.vector(CESample$Race_PI)
+x_race_M = as.vector(CESample$Race_M)
+N = length(y_income)  # Compute the number of observations
+```
+
+- Pass the data and hyperparameter values to JAGS:
+
+```{r message = FALSE}
+the_data <- list("y" = y_income, "x_exp" = x_exp,
+                 "x_rural" = x_rural, "x_race_B" = x_race_B,
+                 "x_race_N" = x_race_N, "x_race_A" = x_race_A,
+                 "x_race_P" = x_race_P, "x_race_M" = x_race_M,
+                 "N" = N,
+                 "mu0" = 0, "g0" = 0.0001, "mu1" = 0, "g1" = 0.0001,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+                 "mu6" = 0, "g6" = 1, "mu7" = 0, "g7" = 1,
+                 "a" = 1, "b" = 1)
+```
+
+- Pass the data and hyperparameter values to JAGS:
+
+```{r message = FALSE, size = "footnotesize"}
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+```
+
+- Run the JAGS code for this model:
+
+```{r message = FALSE}
+posterior_MLR <- run.jags(modelString,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "beta4", "beta5",
+                                  "beta6", "beta7", "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 50,
+                      inits = initsfunction)
+```
+
+
+## JAGS output for the MLR model
+
+```{r message = FALSE, warning = FALSE}
+summary(posterior_MLR)
+```
+
+```{r}
+post_MLR <- as.mcmc(posterior_MLR)
+```
+
+```{r}
+synthesize <- function(X, index, n){
+  mean_Y <- post_MLR[index, "beta0"] + X$y_income * post_MLR[index, "beta1"] + X$x_rural * post_MLR[index, "beta2"] +   X$x_race_B * post_MLR[index, "beta3"] +  X$x_race_N * post_MLR[index, "beta4"] +  X$x_race_A * post_MLR[index,   "beta5"] +  X$x_race_P * post_MLR[index, "beta6"] +  X$x_race_M * post_MLR[index, "beta7"]
+  synthetic_Y <- rnorm(n,mean_Y, post_MLR[index,"sigma"])
+  data.frame(X$y_income, synthetic_Y)
+}
+```
+
+```{r}
+n <- dim(CESample)[1]
+params <- data.frame(y_income, x_rural, x_race_B, x_race_N, x_race_A, x_race_P, x_race_M)
+synthetic_one <- synthesize(params,1,n)
+names(synthetic_one) <- c("LogIncome_org", "LogIncome_syn")
+```
+
+```{r}
+m <- 20
+synthetic_m <- vector("list", m)
+for (l in 1:m){
+  params <- data.frame(y_income, x_rural, x_race_B, x_race_N, x_race_A, x_race_P, x_race_M)
+  synthetic_i <- synthesize(params,4980+l,n)
+  names(synthetic_i) <- c("LogIncome_org", "LogIncome_syn")
+  synthetic_m[[l]] <- synthetic_i
+}
+```
+
+
+Here I write a function to calculate analysis specific utility measures, which I will run on each synthetic data set. 
+```{r}
+utilitymeasure<- function(list_i){
+  exp<-mean(list_i$LogIncome_syn)
+  med<-median(list_i$LogIncome_syn)
+  stand<-sd(list_i$LogIncome_syn)
+  pointEstAnal<- lm(CESample$LogTotalExp ~ list_i$LogIncome_syn)
+  pointEst<-pointEstAnal$coefficients[1]
+  unitInc<-pointEstAnal$coefficients[2]
+  data.frame(exp,med,stand,pointEst,unitInc)
+}
+```
+
+ASUM stands for Analysis Specific Utility Measures. 
+```{r}
+asum_m<- data.frame(utilitymeasure(synthetic_m[[1]]))
+names(asum_m)<-c("mean", "median", "standard_dev", "point_estimate", "unit_increase")
+if(m>1){
+  for (j in 2:m){
+    asum_i<-utilitymeasure(synthetic_m[[j]])
+    names(asum_i)<-c("mean", "median", "standard_dev", "point_estimate", "unit_increase")
+    asum_m<-bind_rows(asum_m,asum_i)
+  }
+}
+asum_m
+```
+
+Here I create the calcQ function which calculates the approxamtion for mean and variance of all 20 synthesized data sets. 
+```{r}
+calcQ<-function(list_q, list_u, m){
+  qm_bar<-sum(list_q)/m
+  bm<-0
+  for(i in 1:m){
+    bm = bm + (list_q[i]-qm_bar)^2/(m-1)
+  }
+  um_bar<-sum(list_u)/m
+  Tp<-bm/m+um_bar
+  return(c(qm_bar, Tp))
+}
+inferences<- calcQ(asum_m$mean, (asum_m$standard_dev)^2,m)
+inferences<-data.frame(inferences[1], inferences[2])
+names(inferences)<-c("mean", "variance")
+inferences
+```
+
+```{r}
+
+```
+
