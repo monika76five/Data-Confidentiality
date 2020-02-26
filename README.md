@@ -136,7 +136,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 2. <ins>Read ```Hu, J. (2019)``` Section 4.2.6 in the References folder, and prepare the following results.<ins>
     1. <ins>In the datasets folder, find ```ACSdata_org.csv``` and ```ACSdata_syn.csv```. Note that these datasets exlucde the HISP variable in the ACS data dictionary, but everything other variable stays the same with the same name and description.</ins>
     2. <ins>Note that in ```ACSdata_syn.csv```, the following four variables are synthesized: ```LANX, WAOB, DIS, HICOV```.</ins>
-    3. <ins>Assume the known variables (by the intruder) are: ```SEX, RACE, MAR```, calculate the expected match risk, the true match rate, and the false match rate described in Section 4.2.6 in ```Hu, J. (2019)```.</ins> Note that 
+    3. <ins>Assume the known variables (by the intruder) are: ```SEX, RACE, MAR```, calculate the expected match risk, the true match rate, and the false match rate.</ins> Note that 
         1. "records with the highest match probability for the target" refers to the records sharing the same known combination
         2. "the total number of target records" should be the total number of records in the dataset (i.e. we evaluate the identification disclosure risk for every observation)
     
