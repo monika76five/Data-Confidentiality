@@ -139,7 +139,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     3. <ins>Assume the known variables (by the intruder) are: ```SEX, RACE, MAR```, calculate the expected match risk, the true match rate, and the false match rate.</ins> Note that 
         1. "records with the highest match probability for the target" refers to the records sharing the same known combination
         2. "the total number of target records" should be the total number of records in the dataset (i.e. we evaluate the identification disclosure risk for every observation)
-        3. You don't need a package to do these calculations. Writing a function might be useful.
+        3. There is no package for these calculations. Work through these summaries and understand how to calculate these quantities with the ACS sample. Writing a function might be useful for automating the process.
     
 3. <ins>**Present your synthesis model(s) for your project dataset(s)**. Refer to the Bayesian Synthesis Models \#1 and \#2 lectures for different synthesis models we have covered, and possibly the references in Item 5 below for ordered categorical data synthesis and count data synthesis. Make sure to follow the correct steps when doing sequential synthesis.</ins>
 
