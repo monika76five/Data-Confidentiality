@@ -19,6 +19,9 @@
 
 - Hu, J. (2019). Bayesian Estimation of Attribute and Identification Disclosure Risks in Synthetic Data. *Transactions on Data Privacy*, 12:1, 61–89.
 
+- Wang, H. and Reiter, J. P. (2012). Multiple imputation for sharing precise geopgraphies in public use data. *Annals of Applied Statistics*, 6, 229-252.
+
+
 ### Applications
 
 - Drechsler, J. and Reiter, J. P. (2009). Disclosure Risk and Data Utility for Partially Synthetic Data: An Empirical Study Using the German IAB. *Journal of Official Statistics*, pp. 589-603.
@@ -26,5 +29,3 @@
 - Kinney, S. K., Reiter, J. P., Reznek, A. P., Miranda, J., Jarmin, R. S., and Abowd, J. M. (2011). Towards Unrestricted Public Use Business Microdata: The Synthetic Longitudinal Business Database. *International Statistical Review*, Vol. 79, No. 3, pp. 362-384.
 
 - Wang, H. and Reiter, J. P. (2012). Multiple imputation for sharing precise geopgraphies in public use data. *Annals of Applied Statistics*, 6, 229-252.
-
-
