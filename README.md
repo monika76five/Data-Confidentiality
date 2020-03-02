@@ -134,12 +134,12 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     1. <ins>Calcuate the corresponding interval overlap measure for each of the analysis-specific utility measures you have done in Item 2.ii from the 2/25 to-do list.</ins>
 
 2. <ins>Read ```Hu, J. (2019)``` Section 4.2.6 in the References folder, and prepare the following results.<ins>
-    1. <ins>In the datasets folder, find ```ACSdata_org.csv``` and ```ACSdata_syn.csv```.</ins> 
+    1. In the datasets folder, find ```ACSdata_org.csv``` and ```ACSdata_syn.csv```.
         1. Note that these datasets exlucde the HISP variable in the ACS data dictionary, but every other variable stays the same with the same name and description.
         2. Note that in ```ACSdata_syn.csv```, the following four variables are synthesized: ```LANX, WAOB, DIS, HICOV```.
-    2. <ins>Assume the known variables (by the intruder) are: ```SEX, RACE, MAR```, calculate the expected match risk, the true match rate, and the false match rate.</ins> Note that 
-        1. "records with the highest match probability for the target" refers to the records sharing the same known combination
-        2. "the total number of target records" should be the total number of records in the dataset (i.e. we evaluate the identification disclosure risk for every observation)
+    2. <ins>Assume the known variables (by the intruder) are: ```SEX, RACE, MAR```, calculate the expected match risk, the true match rate, and the false match rate.</ins> Note that:
+        1. "records with the highest match probability for the target" refers to the records sharing the same known combination.
+        2. "the total number of target records" should be the total number of records in the dataset (i.e. we evaluate the identification disclosure risk for every observation).
         3. There is no package for these calculations. Work through these summaries and understand how to calculate these quantities with the ACS sample. Writing a function might be useful for automating the process.
     
 3. <ins>**Present your synthesis model(s) for your project dataset(s)**. Refer to the Bayesian Synthesis Models \#1 and \#2 lectures for different synthesis models we have covered, and possibly the references in Item 5 on the 2/25 to-do list for ordered categorical data synthesis and count data synthesis. Make sure to follow the correct steps when doing sequential synthesis. Perform a couple of utility measures evaluation and include them in your writeup.</ins>
