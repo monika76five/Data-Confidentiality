@@ -1,0 +1,73 @@
+---
+header-includes:
+- \usepackage{color}
+- \usepackage[dvipsnames]{xcolor}
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+----
+ Spring 2020: MATH 301-56 Data Confidentiality
+----
+---
+
+```{r}
+library(ggplot2)
+library(runjags)
+library(readxl)
+library(coda)
+```
+
+```{r}
+project <- read_excel("Data Confidentiality Project Data.xlsx")
+```
+
+```{r}
+df1 <- data.frame(Income = syn_project$syn_SALARY, degree = project$DGRDG, syn = 1)
+df2 <- data.frame(Income = project$SALARY, degree = project$DGRDG, syn = 0)
+merged <- rbind(df1, df2)
+logistic <- glm(syn ~ Income + degree, data = merged, family = "binomial")
+
+
+N <- length(merged)
+c <- 1/2
+pred <- predict(logistic, data = merged)
+probs <- exp(pred)/(1 + exp(pred))
+U_p <- sum((probs - c)^2) / N
+
+U_p
+```
+
+Cluster Analysis Measure
+```{r}
+clusters <- hclust(dist(merged[,1:2]), method = 'average')
+G <- 50
+clusterCut <- cutree(clusters, G)
+cluster_S <- as.data.frame(cbind(clusterCut,merged$syn))
+names(cluster_S) <- c("cluster", "S")
+n_gS <- table(cluster_S)[, 1]
+n_g <- rowSums(table(cluster_S))
+w_g <- n_g / N
+U_c <- (1/G) * sum(w_g * (n_gS/n_g - c)^2)
+
+U_c
+```
+
+Emperical CDF Measures
+```{r}
+S_x <- ecdf(project$SALARY)
+S_y <- ecdf(syn_project$syn_SALARY)
+
+percentile_orig <- S_x(merged[,"SALARY"])
+percentile_syn <- S_y(merged[,"SALARY"])
+
+ecdf_diff <- percentile_orig - percentile_syn
+
+U_m <- max(abs(ecdf_diff))
+U_s <- mean((ecdf_diff)^2)
+
+U_m
+U_s
+```
