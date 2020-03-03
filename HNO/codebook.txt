@@ -1,0 +1,373 @@
+Samples selected:
+      NHIS 2018                                         regular
+File Type:                    rectangular
+Case Selection:               No
+  Variable               Columns        Len    2018   
+  AGE                2   1-2            2      X 
+  SEX                2   3              1      X 
+  RACEA              2   4-6            3      X 
+  EDUCREC2           2   7-8            2      X 
+  HOURSWRK           2   9-10           2      X 
+  POORYN             2  11              1      X 
+  EARNIMP1           2  12-13           2      X 
+  EARNIMPOINT1       2  14-19           6      X 
+  USUALPL            2  20              1      X 
+  DELAYCOST          2  21              1      X 
+  HINOTCOVE          2  22              1      X 
+  ALCDAYSWK          2  23-24           2      X 
+  CIGDAYMO           2  25-26           2      X 
+  HRSLEEP            2  27-28           2      X 
+  WORFREQ            2  29              1      X 
+  DEPFREQ            2  30              1      X 
+
+Variable Availability Key:
+All Years X - available in this sample
+All Years . - not available in this sample
+
+RECTYPE		Record type
+1		Household
+2		Person
+3		Injury
+
+SEX		Sex
+1		Male
+2		Female
+
+RACEA		Main Racial Background (Pre-1997 Revised OMB Standards), self-reported or interviewer reported
+100		White
+200		Black/African-American
+300		Aleut, Alaskan Native, or American Indian
+310		Alaskan Native or American Indian
+320		Alaskan Native/Eskimo
+330		Aleut
+340		American Indian
+400		Asian or Pacific Islander
+410		Asian
+411		Chinese
+412		Filipino
+413		Korean
+414		Vietnamese
+415		Japanese
+416		Asian Indian
+420		Pacific Islander
+421		Hawaiian
+422		Samoan
+423		Guamanian
+430		Other Asian or Pacific Islander
+431		Other Asian or Pacific Islander (1992-1995)
+432		Other Asian or Pacific Islander (1996)
+433		Other Asian or Pacific Islander (1997-1998)
+434		Other Asian (1999 forward)
+500		Other Race
+510		Other Race (1969-1977)
+520		Other Race (1978)
+530		Other Race (1979-1991)
+540		Other Race (1992-1995)
+550		Other Race (1996)
+560		Other Race (1997-1998)
+570		Other Race (1999-2002)
+580		Primary Race not releasable
+600		Multiple Race, No Primary Race Selected
+610		Multiple Race, including Asian, excluding Black and White
+611		Multiple Race, including Asian and Black, excluding White
+612		Multiple Race, including Asian and White, excluding Black
+613		Multiple Race, including Black, excluding Asian and White
+614		Multiple Race, including Black and White, excluding Asian
+615		Multiple Race, including White, excluding Asian and Black
+616		Multiple Race, including Asian, White, and Black
+617		Multiple Race, excluding Asian, White, and Black
+900		Unknown
+970		Unknown-refused
+980		Unknown-not ascertained
+990		Unknown (1997 forward: Don't know)
+
+EDUCREC2		Educational attainment recode, intervalled
+00		NIU
+10		Never attended/kindergarten only
+20		Grade 1, 2, 3, or 4
+30		Grade 5, 6, 7, or 8
+31		Grade 5, 6, or 7
+32		Grade 8
+40		Grade 9, 10, 11, or 12
+41		Grade 9, 10, or 11
+42		Grade 12
+50		1 to 4 years of college
+51		1 to 3 years of college
+52		1 to 2 years of college
+53		3 to 4 years of college
+54		4 years college/Bachelor's degree
+60		5+ years of college
+96		Unknown-not reported
+97		Unknown-refused
+98		Unknown-not ascertained
+99		Unknown (1996 forward - Don't know)
+
+HOURSWRK		Total hours worked last week or usually
+00		NIU
+01		1
+02		2
+03		3
+04		4
+05		5
+06		6
+07		7
+08		8
+09		9
+10		10
+11		11
+12		12
+13		13
+14		14
+15		15
+16		16
+17		17
+18		18
+19		19
+20		20
+21		21
+22		22
+23		23
+24		24
+25		25
+26		26
+27		27
+28		28
+29		29
+30		30
+31		31
+32		32
+33		33
+34		34
+35		35
+36		36
+37		37
+38		38
+39		39
+40		40
+41		41
+42		42
+43		43
+44		44
+45		45
+46		46
+47		47
+48		48
+49		49
+50		50
+51		51
+52		52
+53		53
+54		54
+55		55
+56		56
+57		57
+58		58
+59		59
+60		60
+61		61
+62		62
+63		63
+64		64
+65		65
+66		66
+67		67
+68		68
+69		69
+70		70
+71		71
+72		72
+73		73
+74		74
+75		75
+76		76
+77		77
+78		78
+79		79
+80		80
+81		81
+82		82
+83		83
+84		84
+85		85
+86		86
+87		87
+88		88
+89		89
+90		90
+91		91
+92		92
+93		93
+94		94
+95		95+ hours
+97		Unknown--refused
+98		Unknown--not ascertained
+99		Unknown--don't know
+
+POORYN		Above or below poverty threshold
+1		At or above poverty threshold
+2		Below poverty threshold
+9		Unk (1997+: incl. Undefined)
+
+EARNIMP1		Person's imputed total earnings, previous calendar year
+00		NIU
+01		$01 to $4,999
+02		$5,000 to $9,999
+03		$10,000 to $14,999
+04		$15,000 to $19,999
+05		$20,000 to $24,999
+10		$25,000 to $34,999
+11		$25,000 to $29,999
+12		$30,000 to $34,999
+20		$35,000 to $44,999
+21		$35,000 to $39,999
+22		$40,000 to $44,999
+30		$45,000 to $54,999
+31		$45,000 to $49,999
+32		$50,000 to $54,999
+40		$55,000 to $64,999
+41		$55,000 to $59,999
+42		$60,000 to $64,999
+50		$65,000 to $74,999
+51		$65,000 to $69,999
+52		$70,000 to $74,999
+60		$75,000 and over
+61		$75,000 to $79,999
+62		$80,000 to $84,999
+63		$85,000 to $89,999
+64		$90,000 to $94,999
+65		$95,000 to $99,999
+66		$100,000 and over
+67		$100,000-$104,999
+68		$105,000-$109,999
+69		$110,000-$114,999
+70		$115,000 and over
+
+USUALPL		Has usual place for medical care
+0		NIU
+1		There is no place or No
+2		Yes, has a usual place or Yes
+3		There is more than one place
+7		Unknown-refused
+8		Unknown-not ascertained
+9		Unknown-don't know
+
+DELAYCOST		Medical care delayed due to cost, past 12 months
+0		NIU
+1		No
+2		Yes
+7		Unknown-refused
+8		Unknown-not ascertained
+9		Unknown-don't know (1993-96: DK or refused)
+
+HINOTCOVE		Health Insurance coverage status
+0		NIU
+1		No, has coverage
+2		Yes, has no coverage
+7		Unknown-refused
+8		Unknown-not ascertained
+9		Unknown-don't know
+
+ALCDAYSWK		Frequency drank alcohol in past year: Days per week
+00		Less than one day per week
+10		1 day per week
+20		2 days per week
+30		3 days per week
+40		4 days per week
+50		5 days per week
+60		6 days per week
+70		7 days per week
+80		Did not drink in past year
+96		NIU
+97		Unknown-refused
+98		Unknown-not ascertained
+99		Unknown-don't know
+
+CIGDAYMO		Number days smoked in past 30 days (some day smokers)
+00		None
+01		1 day
+02		2 days
+03		3 days
+04		4 days
+05		5 days
+06		6 days
+07		7 days
+08		8 days
+09		9 days
+10		10 days
+11		11 days
+12		12 days
+13		13 days
+14		14 days
+15		15 days
+16		16 days
+17		17 days
+18		18 days
+19		19 days
+20		20 days
+21		21 days
+22		22 days
+23		23 days
+24		24 days
+25		25 days
+26		26 days
+27		27 days
+28		28 days
+29		29 days
+30		30 days
+96		NIU
+97		Unknown-refused
+98		Unknown-not ascertained
+99		Unknown-don't know
+
+HRSLEEP		Usual hours sleep per day
+00		NIU
+01		1 hour (1990: 0 or 1 hour)
+02		2 hours
+03		3 hours
+04		4 hours
+05		5 hours
+06		6 hours
+07		7 hours
+08		8 hours
+09		9 hours
+10		10 hours
+11		11 hours
+12		12 hours
+13		13 hours
+14		14 hours
+15		15 hours
+16		16 hours
+17		17 hours
+18		18 hours
+19		19 hours
+20		20 hours
+21		21 hours
+22		22 hours
+23		23 hours
+24		24 hours
+25		Less than 1 hour
+97		Unknown-refused
+98		Unknown-not ascertained
+99		Unknown-don't know
+
+WORFREQ		How often feel worried, nervous, or anxious
+0		NIU
+1		Daily
+2		Weekly
+3		Monthly
+4		A few times a year
+5		Never
+7		Unknown-refused
+8		Unknown-not ascertained
+9		Unknown-don't know
+
+DEPFREQ		How often feel depressed
+0		NIU
+1		Daily
+2		Weekly
+3		Monthly
+4		A few times a year
+5		Never
+7		Unknown-refused
+8		Unknown-not ascertained
+9		Unknown-don't know
