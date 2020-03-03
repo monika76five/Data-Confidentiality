@@ -1,0 +1,74 @@
+---
+title: "todo6"
+output: html_document
+---
+```{r}
+orida<- read.csv("ACSdata_org.csv")
+synda<- read.csv("ACSdata_syn.csv")
+sexsyn<- synda$SEX
+racesyn<- synda$RACE
+marsyn<- synda$MAR
+data<- cbind(orida, sexsyn = sexsyn, racesyn = racesyn, marsyn = marsyn)
+N<- dim(data)
+nrow<- as.vector(1:N)
+orida<- cbind(orida, row = nrow)
+synda<- cbind(synda, row = nrow)
+```
+```{r}
+emr<- c()
+emrisk<- function(x){
+  s<- sexsyn[x]
+  r<- racesyn[x]
+  m<- marsyn[x]
+  select<- which(orida$SEX == s & orida$RACE == r & orida$MAR == m)
+  ci<- length(select)
+  if(x %in% select){
+    return (1/ci)
+  }
+  else{
+    return (0)
+  }
+}
+for(i in 1:N){
+  emr <- c(emr, emrisk(i))
+}
+```
+
+```{r}
+computci<- function(x){
+  s<- sexsyn[x]
+  r<- racesyn[x]
+  m<- marsyn[x]
+  select<- which(orida$SEX == s & orida$RACE == r & orida$MAR == m)
+  ci<- length(select)
+  return (ci)
+}
+ci<- c()
+for(i in 1:N){
+  ci<- c(ci, computci(i))
+}
+orida<- cbind(orida, ci = ci)
+data2<- filter(orida, ci == 1)
+hel<- dim(data2)
+```
+
+```{r}
+falsemr <- function(x){
+  s<- sexsyn[x]
+  r<- racesyn[x]
+  m<- marsyn[x]
+  select<- which(orida$SEX == s & orida$RACE == r & orida$MAR == m)
+  ci<- length(select)
+  if((!x %in% select) & ci == 1){
+    return (1/hel)
+  }
+  else{
+    return (0)
+  }
+}
+fms<- c()
+for(i in 1:N){
+  fms<- c(fms, falsemr(i))
+}
+```
+
