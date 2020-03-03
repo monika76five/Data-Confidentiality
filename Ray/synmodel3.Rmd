@@ -1,0 +1,155 @@
+---
+title: "framingham health data  "
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library(runjags)
+library(coda)
+library(ggplot2)
+data2<- read.csv("frmgham2.csv")
+data2$sexd= fastDummies::dummy_cols(data2$SEX)[,names(fastDummies::dummy_cols(data2$SEX))== ".data_1"]
+data2$educhs= fastDummies::dummy_cols(data2$educ)[,names(fastDummies::dummy_cols(data2$educ))== ".data_2"]
+data2$educsc= fastDummies::dummy_cols(data2$educ)[,names(fastDummies::dummy_cols(data2$educ))== ".data_3"]
+data2$educc= fastDummies::dummy_cols(data2$educ)[,names(fastDummies::dummy_cols(data2$educ))== ".data_4"]
+data2$cigd= fastDummies::dummy_cols(data2$CURSMOKE)[,names(fastDummies::dummy_cols(data2$CURSMOKE))== ".data_1"]
+data2<- na.omit(data2)
+```
+```{r}
+modelString <-"
+model {
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_hr[i] + beta2*x_igpd[i] + beta3*x_age[i], invsigma2)
+}
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+y = as.vector(data2$BMI)
+x_hr = as.vector(data2$HEARTRTE)
+x_igpd = as.vector(data2$CIGPDAY)
+x_age = as.vector(data2$AGE)
+N = length(y) 
+```
+
+```{r}
+the_data2<- list("y" = y, "x_hr"= x_hr,
+                 "x_igpd"= x_igpd, "x_age"= x_age,
+                 "N" = N,
+                 "mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "a" = 1, "b" = 1)
+
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+posterior2<- run.jags(modelString,
+                      n.chains = 1,
+                      data = the_data2,
+                      monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+posterior2
+```
+```{r}
+post2 <- as.mcmc(posterior2)
+syn2<- function(X, index, n){
+  mean_Y <- post2[index, "beta0"] +  X$x_hr * post2[index, "beta1"] +  X$x_igpd * post2[index, "beta2"] +  X$x_age * post2[index, "beta3"]
+  syny<- rnorm(n,mean_Y, post2[index,"sigma"])
+  data.frame(X$y, syny)
+}
+n <- dim(data2)[1]
+frame2 <- data.frame(y, x_hr, x_igpd, x_age)
+syndata2<- syn2(frame2, 1, n)
+names(syndata2)<- c("oribmi", "synbmi")
+ggplot(syndata2, aes(x= oribmi, y= synbmi)) + geom_point(size = 1)
+```
+
+
+```{r}
+modelString2 <-"
+model {
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_age[i] + beta2*x_sexd[i] +
+beta3*x_educhs[i] + beta4*x_educsc[i] +
+beta5*x_educc[i], invsigma2)
+}
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+y= as.vector(data2$BMI)
+x_cigd= as.vector(data2$AGE)
+x_sexd= as.vector(data2$sexd)
+x_educhs= as.vector(data2$educhs)
+x_educsc= as.vector(data2$educsc)
+x_educc= as.vector(data2$educc)
+N= length(y) 
+```
+
+```{r}
+the_data<- list("y" = y, "x_age"= x_age,
+                 "x_sexd"= x_sexd, "x_educhs"= x_educhs,
+                 "x_educsc"= x_educsc, "x_educc"= x_educc,
+                 "N" = N,
+                 "mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+                 "a" = 1, "b" = 1)
+
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+posterior<- run.jags(modelString2,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "beta4", "beta5",
+                                  "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+posterior
+```
+```{r}
+post<- as.mcmc(posterior)
+syn<- function(X, index, n){
+  mean_Y<- post[index, "beta0"] + X$x_age * post[index, "beta1"] + X$x_sexd * post[index, "beta2"] + X$x_educhs * post[index, "beta3"] +  X$x_educsc * post[index, "beta4"] +  X$x_educc * post[index,   "beta5"]
+  syny<- rnorm(n,mean_Y, post[index,"sigma"])
+  data.frame(X$y, syny)
+}
+n<- dim(data2)[1]
+frame<- data.frame(y, x_age, x_sexd, x_educhs, x_educsc, x_educc)
+syndata<- syn(frame, 1, n)
+names(syndata)<- c("oribmi", "synbmi")
+```
+```{r}
+ggplot(syndata, aes(x= oribmi, y= synbmi)) + geom_point(size = 1)
+```
+
