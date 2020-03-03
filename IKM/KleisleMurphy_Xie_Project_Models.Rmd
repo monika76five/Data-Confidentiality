@@ -1,0 +1,396 @@
+---
+title: "Untitled"
+author: "Isaac Kleisle-Murphy"
+date: "March 2, 2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+suppressMessages(require(tidyr))
+suppressMessages(require(dplyr))
+suppressMessages(require(runjags))
+suppressMessages(require(VGAM))
+suppressMessages(require(coda))
+suppressMessages(require(fastDummies))
+
+umap_raw = read.csv("~/Documents/Swat_2020/Data_Privacy/project_data.csv")
+
+umap_wide = umap_raw%>%
+  `colnames<-`(tolower(colnames(.)))%>%
+  mutate(gender = gender,
+         lnSalary = log(salary))%>%
+  #mutate_at(c("biryr", "raceth", "dgrdg", "emsmi"), as.character)%>%
+  arrange(raceth)%>%
+  fastDummies::dummy_cols(., select_columns = c("raceth"), remove_first_dummy = F)%>%
+  arrange(dgrdg)%>%
+  fastDummies::dummy_cols(., select_columns = c("dgrdg"), remove_first_dummy = F)%>%
+  arrange(emsmi)%>%
+  fastDummies::dummy_cols(., select_columns = c("emsmi"), remove_first_dummy = F)%>%
+  mutate(lnage = log(age))%>%
+  ungroup()%>%
+  mutate(s = row_number()) #seed of row
+
+
+set.seed(2020); S = 2500
+umap_subset = umap_wide[sample(1:nrow(umap_wide), 2500, replace = F),]
+
+
+
+```
+
+
+```{r}
+age_post_params = umap_wide%>%
+  mutate(age_subcat = year-age - biryr+1)%>%
+  dplyr::select(year, age, biryr, age_subcat)%>%
+  group_by(biryr)%>%
+  summarise_at(c("age_subcat"), 
+               .funs = lapply(1:5, function(x){return(function(y){return(sum(y==x))})}))%>%
+  mutate_at(paste0("fn", 1:5), function(x) x/1000+1)
+
+syn_age <- function(df_org, posterior_param_df){
+  library(MCMCpack)
+  #df must be row 1
+  suppressMessages(require(stats))
+  set.seed(df_org$s[1])
+  
+  posterior_alpha = posterior_param_df%>%
+    filter(biryr == df_org$biryr[1])%>%
+    dplyr::select(fn1:fn5)%>%
+    .[1,]%>%
+    as.numeric()
+  
+  dirch_draw = MCMCpack::rdirichlet(1, posterior_alpha)%>%as.numeric()
+  draw = df_org$year[1] - sum(rmultinom(1, 1, dirch_draw)*(0:4)) - df_org$biryr[1]
+  
+  #synthetic version of dataframe
+  return(df_org%>%mutate(age = draw, lnage = log(age)))
+}
+```
+
+
+
+```{r}
+
+race_post_params = c(sum(umap_wide$raceth_1) + 1,
+                     sum(umap_wide$raceth_2) + 1,
+                     sum(umap_wide$raceth_3) + 1)
+
+syn_race <- function(df_org, post_params, s = 2020){
+  
+  set.seed(s)
+  dirch_draw = MCMCpack::rdirichlet(nrow(df_org), post_params)
+  race_draw = lapply(1:nrow(df_org),
+                   function(x) sum((1:3)*(rmultinom(1, 1:3, dirch_draw[x, ])%>%t())))%>%
+    unlist()
+  
+  df_org$raceth = race_draw
+  return(df_org)
+}
+```
+
+
+```{r}
+degr_data = list()
+degr_data$y = as.matrix(umap_subset%>%dplyr::select(dgrdg_1:dgrdg_4))%>%unname()
+degr_data$D = ncol(degr_data$y)
+degr_data$N = nrow(degr_data$y)
+degr_data$lnage = umap_subset$lnage
+degr_data$raceth = as.numeric(umap_subset$raceth)
+degr_data$R = max(degr_data$raceth)
+
+
+degr_str = "
+model {
+
+for (i in 1:N){
+
+y[i,1:D] ~ dmulti(p[i,1:D],1)
+
+for (d in 1:D){
+
+p[i,d] <- q[i,d]/sum(q[i,1:D])
+log(q[i,d]) <- beta0[d] + beta1[d]*lnage[i] + beta2[raceth[i], d]
+
+}
+
+}
+
+
+beta0[1] <- 0
+beta1[1] <- 0 #lnage
+for (r in 1:R){
+  beta2[r, 1] <- 0
+}
+
+
+for (d in 2:D){
+
+beta0[d] ~ dnorm(0, tau0[d])
+beta1[d] ~ dnorm(0, tau1[d])
+for (r in 1:R){
+  beta2[r, d] ~ dnorm(0, tau2[r, d])
+  tau2[r, d] ~ dgamma(10,1)
+}
+tau0[d] ~ dgamma(10,1)
+tau1[d] ~ dgamma(10,1)
+
+}
+
+
+
+}
+
+"
+
+
+degr.fit = run.jags(model = degr_str, data = degr_data, monitor = c("beta0", "beta1", "beta2"),
+                    n.chains = 2, burnin = 1000, sample = 250)
+
+
+syn_degr <- function(df_org, fit.df){
+  
+  la = df_org$lnage[1] 
+  rc = df_org$raceth[1]
+  
+  log_q = sapply(1:4, function(x)
+    fit.df[1, paste0("beta0.", x, ".")] + 
+      fit.df[1, paste0("beta1.", x, ".")]*la +
+      fit.df[1, paste0("beta2.", rc, ".", x, ".")]
+    )
+  
+  p_vec = sapply(1:4, function(x)
+    exp(log_q)[x]/sum(exp(log_q))
+    )
+  
+  set.seed(df_org$s[1])
+  draw = sum(rmultinom(1, 1, p_vec)*1:4)
+  
+  df_org$dgrdg = draw
+  
+  return(df_org)
+}
+```
+
+```{r}
+sal_a_data = list()
+sal_a_data$y = as.matrix(
+  umap_subset%>%
+    mutate(sal_c1 = ifelse(salary < 150000, 1, 0), 
+           sal_c2 = ifelse(salary == 150000, 1, 0), 
+           sal_c3 = ifelse(salary > 150000, 1, 0))%>%
+    dplyr::select(sal_c1:sal_c3)
+  )%>%
+  unname()
+sal_a_data$S = ncol(sal_a_data$y)
+sal_a_data$N = nrow(sal_a_data$y)
+
+sal_a_data$dgrdg = as.numeric(umap_subset$dgrdg)
+sal_a_data$D = max(sal_a_data$dgrdg)
+
+sal_a_data$lnage = umap_subset$lnage
+sal_a_data$raceth = as.numeric(umap_subset$raceth)
+sal_a_data$R = max(sal_a_data$raceth)
+
+
+
+sal_a_str = "
+model {
+
+for (i in 1:N){
+
+y[i,1:S] ~ dmulti(p[i,1:S],1)
+
+for (s in 1:S){
+
+p[i,s] <- q[i,s]/sum(q[i,1:S])
+log(q[i,s]) <- beta0[s] + beta1[s]*lnage[i] + beta2[raceth[i], s] + beta3[dgrdg[i], s]
+
+}
+
+}
+
+
+beta0[1] <- 0
+beta1[1] <- 0 #lnage
+for (r in 1:R){
+  beta2[r, 1] <- 0
+}
+for (d in 1:D){
+  beta3[d, 1] <- 0
+}
+
+
+for (s in 2:S){
+
+beta0[s] ~ dnorm(0, tau0[s])
+beta1[s] ~ dnorm(0, tau1[s])
+for (r in 1:R){
+  beta2[r, s] ~ dnorm(0, tau2[r,s])
+  tau2[r,s] ~ dgamma(10, 1)
+}
+for (d in 1:D){
+  beta3[d, s] ~ dnorm(0, tau3[d, s])
+  tau3[d,s] ~ dgamma(10, 1)
+}
+
+tau0[s] ~ dgamma(10, 1)
+tau1[s] ~ dgamma(10, 1)
+
+}
+}
+
+"
+
+sal_a.fit = run.jags(model = sal_a_str, data = sal_a_data, monitor = c("beta0", "beta1", "beta2", "beta3"),
+                    n.chains = 2, burnin = 1000, sample = 250)
+
+
+
+syn_sal_a <- function(df_org, fit.df){
+  
+  la = df_org$lnage[1] 
+  rc = df_org$raceth[1]
+  dg = df_org$dgrdg[1]
+  
+  log_q = sapply(1:3, function(x)
+    fit.df[1, paste0("beta0.", x, ".")] + 
+      fit.df[1, paste0("beta1.", x, ".")]*la +
+      fit.df[1, paste0("beta2.", rc, ".", x, ".")] + 
+      fit.df[1, paste0("beta3.", dg, ".", x, ".")]
+    )
+  
+  p_vec = sapply(1:3, function(x)
+    exp(log_q)[x]/sum(exp(log_q))
+    )
+  
+  set.seed(df_org$s[1])
+  draw = sum(rmultinom(1, 1, p_vec)*1:3)
+  
+  df_org$salary_cat = draw
+  
+  return(df_org)
+}
+```
+
+```{r}
+umap_cont = umap_subset%>%filter(salary<150000)
+
+sal_b_data = list()
+sal_b_data$y = umap_cont$salary/10000
+
+sal_b_data$N = length(sal_b_data$y)
+
+sal_b_data$dgrdg = as.numeric(umap_cont$dgrdg)
+sal_b_data$D = max(sal_b_data$dgrdg)
+
+sal_b_data$lnage = umap_cont$lnage
+
+sal_b_data$raceth = as.numeric(umap_cont$raceth)
+sal_b_data$R = max(sal_b_data$raceth)
+
+
+sal_b_str = "
+
+model{
+
+for (i in 1:N){
+  
+  y[i] ~ dnorm(mu[i], invsigma2)T(0,)
+  mu[i] <- beta0 + beta1*lnage[i] + beta2[raceth[i]] + beta3[dgrdg[i]]
+
+}
+
+beta0 ~ dnorm(7, tau[1])
+beta1 ~ dnorm(0, tau[2])
+for (r in 1:R){
+  beta2[r] ~ dnorm(0, tau[3])
+}
+for (d in 1:D){
+  beta3[d] ~ dnorm(0, tau[4])
+}
+
+invsigma2 ~ dgamma(3, 1)
+sigma <- sqrt(pow(invsigma2, -1))
+
+for (z in 1:4){
+tau[z] ~ dgamma(10,1)
+}
+
+}
+"
+
+sal_b.fit = run.jags(model = sal_b_str, data = sal_b_data, monitor = c("beta0", "beta1", "beta2", "beta3", "sigma"),
+                    n.chains = 2, burnin = 10000, sample = 500, thin = 10)
+
+
+
+
+syn_sal_b <- function(df_org, fit.df){
+  
+  la = df_org$lnage[1] 
+  rc = df_org$raceth[1]
+  dg = df_org$dgrdg[1]
+  
+  mu = fit.df[1, "beta0"] + 
+    fit.df[1, "beta1"]*la +
+    fit.df[1, paste0("beta2.", rc, ".")] + 
+    fit.df[1, paste0("beta3.", dg, ".")]
+  
+  sigma = fit.df$sigma[1]
+  
+  
+  
+  salary = rnorm(1, mu, sigma)*10000
+  
+  
+  df_org$salary = salary
+  
+  return(df_org)
+}
+
+```
+
+
+
+```{r}
+synthesize <- function(original_df, 
+                       age_post_params,
+                       race_post_params,
+                       degr.fit,
+                       sal_a.fit,
+                       sal_b.fit,
+                       s = 20201){
+  
+  #get row
+  set.seed(s); degr.fit.df = data.frame(as.mcmc(degr.fit))
+  degr.fit.df.1 = degr.fit.df[sample(1:nrow(degr.fit.df), 1), ]
+  
+  set.seed(s+1); sal_a.fit.df = data.frame(as.mcmc(sal_a.fit))
+  sal_a.fit.df.1 = sal_a.fit.df[sample(1:nrow(sal_a.fit.df), 1), ]
+  
+  set.seed(s+2); sal_b.fit.df = data.frame(as.mcmc(sal_b.fit))
+  sal_b.fit.df.1 = sal_b.fit.df[sample(1:nrow(sal_b.fit.df), 1), ]
+  
+  synthetic_df = original_df%>%
+    ungroup()%>%
+    mutate(s = row_number())%>%
+    group_by(s)%>%
+    do(syn_age(., age_post_params))%>%
+    ungroup()%>%
+    do(syn_race(., race_post_params))%>%
+    group_by(s)%>%
+    do(syn_sal_a(., sal_a.fit.df.1))%>%
+    do(syn_sal_b(., sal_b.fit.df.1))%>%
+    mutate(salary = ifelse(salary_cat==3,
+                           9999998,
+                           ifelse(salary_cat==2, 150000, salary)))
+    return(synthetic_df)
+  
+                       }
+```
+
