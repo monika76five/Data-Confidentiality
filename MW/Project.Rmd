@@ -1,0 +1,750 @@
+---
+title: "ProjectDataset"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+AP VoteCast is a survey of the American electorate conducted in all 50 states by NORC at the University of Chicago for The Associated Press and Fox News. The survey is funded by AP. The survey of 138,929 registered voters was conducted October 29 to November 6, 2018, concluding as polls closed on Election Day. Interviews were conducted via phone and web, with 11,059 completing by phone and 127,870 completing by web.
+
+```{r include=FALSE}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(fastDummies)
+knitr::opts_chunk$set(echo = TRUE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+require(runjags)
+require(coda)
+```
+
+```{r}
+data <- read.csv("dataset_CD.csv")
+```
+
+```{r}
+data$RACETH5 <- recode(data$RACETH5, "(1) White" = 1, "(2) African American or Black" = 2, "(3) Latino or Hispanic" = 3, "(4) Asian" = 4, "(5) Other" = 5, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$EDUC <- recode(data$EDUC, "(1) High school or less" = 1, "(2) Some college/assoc. degree" = 2, "(3) College graduate" = 3, "(4) Postgraduate study" = 4, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$INCOME <- recode(data$INCOME, "(1) Under $25,000" = 1, "(2) $25,000-$49,999" = 2, "(3) $50,000-$74,999" = 3, "(4) $75,000-$99,999" = 4, "(5) $100,000 or more" = 5, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$SEX <- recode(data$SEX, "(1) Men" = 1, "(2) Women" =2, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$AGE <- recode(data$AGE65, "(1) 18-24" = 1, "(2) 25-29" = 2, "(3) 30-39" = 3, "(4) 40-49" = 4, "(5) 50-64" = 5, "(6) 65+" = 6, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$AGE65 <- NULL
+data$PARTY <- recode(data$PARTYFULL, "(1) Democrat/Lean Dem" = 1, "(2) Republican/Lean Rep" =2, "(3) Independent" = 3)
+data$PARTYFULL <- NULL
+data$IDEO <- recode(data$IDEO, "(1) Very liberal" = 1, "(2) Somewhat liberal" = 2, "(3) Moderate" = 3, "(4) Somewhat conservative" = 4, "(5) Very conservative" = 5, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$RELIG <- recode(data$RELIG4, "(1) Protestant/Other Christian" = 1, "(2) Catholic"= 2, "(3) Other" =3, "(4) Unaffiliated" = 4, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$RELIG4 <- NULL
+data$PLACE <- recode(data$SIZEPLACE, "(1) Urban" = 1, "(2) Suburban" = 2, "(3) Small town" = 3, "(4) Rural" = 4, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$SIZEPLACE <- NULL
+data$TRACK <- recode(data$TRACK, "(1) Right direction" = 1, "(2) Wrong direction" = 2, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$APP <- recode(data$APP, "(1) Approve strongly" = 1, "(2) Approve somewhat" = 2, "(3) Disapprove somewhat" = 3, "(4) Disapprove strongly" = 4, "(99) DON’T KNOW/SKIPPED/REFUSED (VOL)" = 99)
+data$STATE <- gsub("\\ .*","",data$STATE)
+data$STATE <- substring(data$STATE, 2)
+data$STATE <- gsub("\\).*","",data$STATE)
+data$SU_ID <- NULL
+data$RACE <- data$RACETH5
+data$RACETH5 <- NULL
+data$PLACE <- NULL
+data$APP <- NULL
+data$TRACK <- NULL
+```
+
+```{r}
+data[1:5,]
+```
+
+```{r}
+data <- filter_all(data, all_vars(. < 60))
+```
+
+```{r}
+IDEO_data <- c()
+for (i in 1:5){
+  IDEO_data[i] <- sum(data$IDEO==i)
+}
+lbls <- c("(1) Very liberal", "(2) Somewhat liberal", "(3) Moderate", "(4) Somewhat conservative", "(5) Very conservative")
+df <- data.frame(
+  group = lbls,
+  value = IDEO_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+AGE_data <- c()
+for (i in 1:6){
+  AGE_data[i] <- sum(data$AGE==i)
+}
+lbls <- c("(1) 18-24",
+"(2) 25-29",
+"(3) 30-39",
+"(4) 40-49",
+"(5) 50-64",
+"(6) 65+")
+df <- data.frame(
+  group = lbls,
+  value = AGE_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+data <- data %>% filter(EDUC<88)
+EDUC_data <- c()
+for (i in 1:4){
+  EDUC_data[i] <- sum(data$EDUC==i)
+}
+lbls <- c("(1) High school or less",
+"(2) Some college/assoc. degree",
+"(3) College graduate",
+"(4) Postgraduate study")
+df <- data.frame(
+  group = lbls,
+  value = EDUC_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+data <- data %>% filter(RACE<88)
+RACE_data <- c()
+for (i in 1:5){
+  RACE_data[i] <- sum(data$RACE==i)
+}
+lbls <- c("(1) White",
+"(2) African American or Black",
+"(3) Latino or Hispanic",
+"(4) Asian",
+"(5) Other")
+df <- data.frame(
+  group = lbls,
+  value = RACE_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+data <- data %>% filter(PARTY<88)
+PAR_data <- c()
+for (i in 1:3){
+  PAR_data[i] <- sum(data$PARTY==i)
+}
+lbls <- c("(1) Democrat/Lean Dem", "(2) Republican/Lean Rep", "(3) Independent")
+df <- data.frame(
+  group = lbls,
+  value = PAR_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+data <- data %>% filter(INCOME<88)
+INC_data <- c()
+for (i in 1:5){
+  INC_data[i] <- sum(data$INCOME==i)
+}
+lbls <- c("(1) Under $25,000",
+"(2) $25,000-$49,999",
+"(3) $50,000-$74,999",
+"(4) $75,000-$99,999",
+"(5) $100,000 or more")
+df <- data.frame(
+  group = lbls,
+  value = INC_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+data <- data %>% filter(RELIG<88)
+REL_data <- c()
+for (i in 1:4){
+  REL_data[i] <- sum(data$RELIG==i)
+}
+lbls <- c("(1) Protestant/Other Christian",
+"(2) Catholic",
+"(3) Other",
+"(4) Unaffiliated")
+df <- data.frame(
+  group = lbls,
+  value = REL_data
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+data$RELIG <- NULL
+```
+
+```{r}
+table(data$IDEO, data$RACE)
+table(data$IDEO, data$AGE)
+table(data$IDEO, data$EDUC)
+table(data$IDEO, data$INCOME)
+```
+
+```{r}
+table(data$IDEO, data$STATE)
+```
+
+The group with the most conservative ideology is exposed to the greatest disclosure risk, across differenet demographic variables.
+
+```{r}
+table(data$PARTY, data$IDEO)
+```
+
+The model I want to use resembles the sequential model we learnt in the paper:
+Age group $f(y_1)$, and follows a Dirichlet-multinomial prior $(p_{i1},p_{i2}, p_{i3},p_{i4},p_{i5}\sim Dirichlet(\alpha_1,\alpha_2,\alpha_3,\alpha_4,\alpha_5) $
+Education level $f(y_2|y_1)$, and follows a multinomial logistic model with multiple explanatory variables (age groups) $log(\frac{p_{ic}}{p_{i1}})=\beta_{0c}+\beta_{1c}X_{age1}+\cdots+\beta_{5c}X_{age5}$
+Income group $f(y_3|y_2,y_1)$, and is an ordered categorical variable
+Ideology group $f(y_4|y_3,y_2,y_1)$, and follows a multinomial logistic model with multiple explanatory variables
+
+**Synthesis Model**
+
+First, I would use a binomial model to generate synthesized sex.
+
+*Sex*
+
+```{r}
+modelString_sex <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dbern(p)
+}
+## priors
+p ~ dnorm(0.5, 1)
+}
+"
+```
+
+```{r}
+data$SEX <- data$SEX - 1
+y = as.vector(data$SEX)
+N = length(y)  
+```
+
+```{r}
+the_data <- list("y" = y,
+                 "N" = N)
+```
+
+```{r}
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+```
+
+```{r}
+posterior_sex <- run.jags(modelString_sex,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("p"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+```
+
+```{r}
+plot(posterior_sex, vars="p")
+```
+
+```{r}
+post <- as.mcmc(posterior_sex)
+```
+
+```{r}
+post
+synthesize <- function(index, n){
+  synthetic_sex <- c()
+  synthetic_sex <- rbinom(n, 1, post[index,"p"])
+  data.frame(synthetic_sex)
+}
+n <- dim(data)[1]
+syn_sex <- data.frame(synthesize(1, n))
+data <- cbind(data, syn_sex)
+colnames(data)[10] <- "SEX_s"
+```
+
+Then, I will use a Dirichlet model to generate age and race.
+
+*Age*
+
+```{r eval=FALSE, include=TRUE}
+modelString_age <-"
+model {
+## sampling
+for (i in 1:N){
+y[i,] ~ dmulti(p[i,1:C],1)
+p[i,] ~ ddirch(alpha[])
+}
+## priors
+for (c in 1:C){
+alpha[c] <- 1
+}
+}
+"
+```
+
+```{r eval=FALSE, include=TRUE} 
+y = as.vector(data$AGE)
+N = length(y)
+C = 6
+```
+
+```{r eval=FALSE, include=TRUE}
+the_data <- list("y" = y,
+                 "N" = N,
+                 "C" = C)
+```
+
+```{r eval=FALSE, include=TRUE}
+posterior_sex <- run.jags(modelString_age,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("p"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+```
+
+```{r eval=FALSE, include=TRUE}
+post <- as.mcmc(posterior_age)
+```
+
+*Race*
+
+```{r eval=FALSE, include=TRUE}
+modelString_race <-"
+model {
+## sampling
+for (i in 1:N){
+y[i,] ~ dmulti(p[i,1:C],1)
+p[i,] ~ ddirch(alpha[])
+}
+## priors
+for (c in 1:C){
+alpha[c] <- 1
+}
+}
+"
+```
+
+```{r eval=FALSE, include=TRUE}
+y = as.vector(data$RACE)
+N = length(y)
+C = 5
+```
+
+```{r eval=FALSE, include=TRUE}
+the_data <- list("y" = y,
+                 "N" = N,
+                 "C" = C)
+```
+
+```{r eval=FALSE, include=TRUE}
+posterior_sex <- run.jags(modelString_race,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("p"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+```
+
+Moving on, I will use a multinomial logistic model to synthesize education and income.
+
+```{r}
+data$Age1 = fastDummies::dummy_cols(data$AGE)[,names(fastDummies::dummy_cols(data$AGE)) == ".data_1"]
+data$Age2 = fastDummies::dummy_cols(data$AGE)[,names(fastDummies::dummy_cols(data$AGE)) == ".data_2"]
+data$Age3 = fastDummies::dummy_cols(data$AGE)[,names(fastDummies::dummy_cols(data$AGE)) == ".data_3"]
+data$Age4 = fastDummies::dummy_cols(data$AGE)[,names(fastDummies::dummy_cols(data$AGE)) == ".data_4"]
+data$Age5 = fastDummies::dummy_cols(data$AGE)[,names(fastDummies::dummy_cols(data$AGE)) == ".data_5"]
+data$Age6 = fastDummies::dummy_cols(data$AGE)[,names(fastDummies::dummy_cols(data$AGE)) == ".data_6"]
+data$Race1 = fastDummies::dummy_cols(data$RACE)[,names(fastDummies::dummy_cols(data$RACE)) == ".data_1"]
+data$Race2 = fastDummies::dummy_cols(data$RACE)[,names(fastDummies::dummy_cols(data$RACE)) == ".data_2"]
+data$Race3 = fastDummies::dummy_cols(data$RACE)[,names(fastDummies::dummy_cols(data$RACE)) == ".data_3"]
+data$Race4 = fastDummies::dummy_cols(data$RACE)[,names(fastDummies::dummy_cols(data$RACE)) == ".data_4"]
+data$Race5 = fastDummies::dummy_cols(data$RACE)[,names(fastDummies::dummy_cols(data$RACE)) == ".data_5"]
+data$WOMAN <- data$SEX_s
+```
+
+*Education*
+```{r message = FALSE, size = "footnotesize"}
+modelString_educ <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*Age1[i] + beta2*Age2[i] + beta3*Age3[i] + beta4*Age4[i] + beta5*Age5[i] + beta6*Race1[i] + beta7*Race2[i] + beta8*Race3[i] + beta9*Race4[i] + beta10*Woman[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(0, 0.00001)
+beta1 ~ dnorm(0, 0.00001)
+beta2 ~ dnorm(0, 0.00001)
+beta3 ~ dnorm(0, 0.00001)
+beta4 ~ dnorm(0, 0.00001)
+beta5 ~ dnorm(0, 0.00001)
+beta6 ~ dnorm(0, 0.00001)
+beta7 ~ dnorm(0, 0.00001)
+beta8 ~ dnorm(0, 0.00001)
+beta9 ~ dnorm(0, 0.00001)
+beta10 ~ dnorm(0, 0.00001)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+```
+
+```{r}
+y = as.vector(data$EDUC)
+Age1 = as.vector(data$Age1)
+Age2 = as.vector(data$Age2)
+Age3 = as.vector(data$Age3)
+Age4 = as.vector(data$Age4)
+Age5 = as.vector(data$Age5)
+Race1 = as.vector(data$Race1) 
+Race2 = as.vector(data$Race2) 
+Race3 = as.vector(data$Race3) 
+Race4 = as.vector(data$Race4) 
+Woman = as.vector(data$SEX_s)
+N = length(y) 
+```
+
+```{r message = FALSE, size = "footnotesize"}
+the_data <- list("y" = y,
+                 "N" = N,
+                 "Age1" = Age1,
+                 "Age2" = Age2,
+                 "Age3" = Age3,
+                 "Age4" = Age4,
+                 "Age5" = Age5,
+                 "Race1" = Race1,
+                 "Race2" = Race2,
+                 "Race3" = Race3,
+                 "Race4" = Race4,
+                 "Woman" = Woman,
+                 "a" = 1, "b" = 1)
+```
+
+```{r eval=FALSE, message=FALSE, include=FALSE, results=, size="footnotesize"}
+posterior <- run.jags(modelString_educ,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2", "beta3", "beta4", "beta5", "beta6", "beta7", "beta8", "beta9", "beta10", "sigma"),
+                      adapt = 1000, 
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+```
+
+```{r message=FALSE, size = "footnotesize"}
+post <- as.mcmc(posterior)
+```
+
+```{r message=FALSE, size = "footnotesize"}
+synf_educ <- function(Age1, Age2, Age3, Age4, Age5, Race1, Race2, Race3, Race4, Woman, index, n){
+  mean_Y <- post[index, "beta0"] +  Age1 * post[index, "beta1"] + Age2 * post[index, "beta2"] + Age3 * post[index, "beta3"] + Age4 * post[index, "beta4"] + Age5 * post[index, "beta5"] + Race1 * post[index, "beta6"] + Race1 * post[index, "beta7"] + Race1 * post[index, "beta8"] + Race1 * post[index, "beta9"] + Woman * post[index, "beta10"]
+  synthetic_educ <- rnorm(n, mean_Y, post[index, "sigma"])
+  data.frame(synthetic_educ)
+}
+index=1
+n <- dim(data)[1]
+syn_educ <- data.frame(synf_educ(data$Age1, data$Age2, data$Age3, data$Age4, data$Age5, data$Race1, data$Race2, data$Race3, data$Race4, data$SEX_s, 1, n))
+syn_educ <- round(syn_educ$synthetic_educ,0)
+data <- cbind(data, syn_educ)
+colnames(data)[23] <- "EDUC_s"
+data <- data %>% filter(EDUC_s >=1, EDUC_s <=4)
+```
+
+*Income*
+
+```{r}
+data$Educ1 = fastDummies::dummy_cols(data$EDUC_s)[,names(fastDummies::dummy_cols(data$EDUC_s)) == ".data_1"]
+data$Educ2 = fastDummies::dummy_cols(data$EDUC_s)[,names(fastDummies::dummy_cols(data$EDUC_s)) == ".data_2"]
+data$Educ3 = fastDummies::dummy_cols(data$EDUC_s)[,names(fastDummies::dummy_cols(data$EDUC_s)) == ".data_3"]
+```
+
+```{r message = FALSE, size = "footnotesize"}
+modelString_inc <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*Age1[i] + beta2*Age2[i] + beta3*Age3[i] + beta4*Age4[i] + beta5*Age5[i] + beta6*Race1[i] + beta7*Race2[i] + beta8*Race3[i] + beta9*Race4[i] + beta10*Woman[i] + beta11*Educ1[i] + beta12*Educ2[i] + beta13*Educ3[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(0, 0.00001)
+beta1 ~ dnorm(0, 0.00001)
+beta2 ~ dnorm(0, 0.00001)
+beta3 ~ dnorm(0, 0.00001)
+beta4 ~ dnorm(0, 0.00001)
+beta5 ~ dnorm(0, 0.00001)
+beta6 ~ dnorm(0, 0.00001)
+beta7 ~ dnorm(0, 0.00001)
+beta8 ~ dnorm(0, 0.00001)
+beta9 ~ dnorm(0, 0.00001)
+beta10 ~ dnorm(0, 0.00001)
+beta11 ~ dnorm(0, 0.00001)
+beta12 ~ dnorm(0, 0.00001)
+beta13 ~ dnorm(0, 0.00001)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+```
+
+```{r}
+y = as.vector(data$EDUC)
+Age1 = as.vector(data$Age1)
+Age2 = as.vector(data$Age2)
+Age3 = as.vector(data$Age3)
+Age4 = as.vector(data$Age4)
+Age5 = as.vector(data$Age5)
+Race1 = as.vector(data$Race1) 
+Race2 = as.vector(data$Race2) 
+Race3 = as.vector(data$Race3) 
+Race4 = as.vector(data$Race4) 
+Woman = as.vector(data$SEX_s)
+Educ1 = as.vector(data$Educ1)
+Educ2 = as.vector(data$Educ2)
+Educ3 = as.vector(data$Educ3)
+N = length(y) 
+```
+
+```{r message = FALSE, size = "footnotesize"}
+the_data <- list("y" = y,
+                 "N" = N,
+                 "Age1" = Age1,
+                 "Age2" = Age2,
+                 "Age3" = Age3,
+                 "Age4" = Age4,
+                 "Age5" = Age5,
+                 "Race1" = Race1,
+                 "Race2" = Race2,
+                 "Race3" = Race3,
+                 "Race4" = Race4,
+                 "Woman" = Woman,
+                 "Educ1" = Educ1,
+                 "Educ2" = Educ2,
+                 "Educ3" = Educ3,
+                 "a" = 1, "b" = 1)
+```
+
+```{r eval=FALSE, message=FALSE, include=FALSE, results=, size="footnotesize"}
+posterior <- run.jags(modelString_inc,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2", "beta3", "beta4", "beta5", "beta6", "beta7", "beta8", "beta9", "beta10", "beta11", "beta12", "beta13", "sigma"),
+                      adapt = 1000, 
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+```
+
+```{r message=FALSE, size = "footnotesize"}
+post <- as.mcmc(posterior)
+```
+
+```{r message=FALSE, size = "footnotesize"}
+synf_inc <- function(Age1, Age2, Age3, Age4, Age5, Race1, Race2, Race3, Race4, Woman,Educ1, Educ2, Educ3, index, n){
+  mean_Y <- post[index, "beta0"] +  Age1 * post[index, "beta1"] + Age2 * post[index, "beta2"] + Age3 * post[index, "beta3"] + Age4 * post[index, "beta4"] + Age5 * post[index, "beta5"] + Race1 * post[index, "beta6"] + Race1 * post[index, "beta7"] + Race1 * post[index, "beta8"] + Race1 * post[index, "beta9"] + Woman * post[index, "beta10"] + Educ1 * post[index, "beta11"] + Educ2 * post[index, "beta12"] + Educ3 * post[index, "beta13"]
+  synthetic_inc <- rnorm(n, mean_Y, post[index, "sigma"])
+  data.frame(synthetic_inc)
+}
+n <- dim(data)[1]
+syn_inc <- data.frame(synf_inc(data$Age1, data$Age2, data$Age3, data$Age4, data$Age5, data$Race1, data$Race2, data$Race3, data$Race4, data$SEX_s, data$Educ1, data$Educ2, data$Educ3, 1, n))
+syn_inc <- round(syn_inc$synthetic_inc,0)
+data <- cbind(data, syn_inc)
+colnames(data)[27] <- "INC_s"
+data <- data %>% filter(INC_s >=1, INC_s <=5)
+```
+
+Finally! I will use age, race, sex, education, and income to synthesize ideology.
+
+```{r}
+data$Inc1 = fastDummies::dummy_cols(data$INC_s)[,names(fastDummies::dummy_cols(data$INC_s)) == ".data_1"]
+data$Inc2 = fastDummies::dummy_cols(data$INC_s)[,names(fastDummies::dummy_cols(data$INC_s)) == ".data_2"]
+data$Inc3 = fastDummies::dummy_cols(data$INC_s)[,names(fastDummies::dummy_cols(data$INC_s)) == ".data_3"]
+data$Inc4 = fastDummies::dummy_cols(data$INC_s)[,names(fastDummies::dummy_cols(data$INC_s)) == ".data_4"]
+```
+
+```{r message = FALSE, size = "footnotesize"}
+modelString_ideo <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*Age1[i] + beta2*Age2[i] + beta3*Age3[i] + beta4*Age4[i] + beta5*Age5[i] + beta6*Race1[i] + beta7*Race2[i] + beta8*Race3[i] + beta9*Race4[i] + beta10*Woman[i] + beta11*Educ1[i] + beta12*Educ2[i] + beta13*Educ3[i] + beta14*Inc1[i] + beta15*Inc2[i] + beta16*Inc3[i] + beta17*Inc4[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(0, 0.00001)
+beta1 ~ dnorm(0, 0.00001)
+beta2 ~ dnorm(0, 0.00001)
+beta3 ~ dnorm(0, 0.00001)
+beta4 ~ dnorm(0, 0.00001)
+beta5 ~ dnorm(0, 0.00001)
+beta6 ~ dnorm(0, 0.00001)
+beta7 ~ dnorm(0, 0.00001)
+beta8 ~ dnorm(0, 0.00001)
+beta9 ~ dnorm(0, 0.00001)
+beta10 ~ dnorm(0, 0.00001)
+beta11 ~ dnorm(0, 0.00001)
+beta12 ~ dnorm(0, 0.00001)
+beta13 ~ dnorm(0, 0.00001)
+beta14 ~ dnorm(0, 0.00001)
+beta15 ~ dnorm(0, 0.00001)
+beta16 ~ dnorm(0, 0.00001)
+beta17 ~ dnorm(0, 0.00001)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+```
+
+```{r}
+y = as.vector(data$EDUC)
+Age1 = as.vector(data$Age1)
+Age2 = as.vector(data$Age2)
+Age3 = as.vector(data$Age3)
+Age4 = as.vector(data$Age4)
+Age5 = as.vector(data$Age5)
+Race1 = as.vector(data$Race1) 
+Race2 = as.vector(data$Race2) 
+Race3 = as.vector(data$Race3) 
+Race4 = as.vector(data$Race4) 
+Woman = as.vector(data$SEX_s)
+Educ1 = as.vector(data$Educ1)
+Educ2 = as.vector(data$Educ2)
+Educ3 = as.vector(data$Educ3)
+Inc1 = as.vector(data$Inc1)
+Inc2 = as.vector(data$Inc2)
+Inc3 = as.vector(data$Inc3)
+Inc4 = as.vector(data$Inc4)
+N = length(y) 
+```
+
+```{r message = FALSE, size = "footnotesize"}
+the_data <- list("y" = y,
+                 "N" = N,
+                 "Age1" = Age1,
+                 "Age2" = Age2,
+                 "Age3" = Age3,
+                 "Age4" = Age4,
+                 "Age5" = Age5,
+                 "Race1" = Race1,
+                 "Race2" = Race2,
+                 "Race3" = Race3,
+                 "Race4" = Race4,
+                 "Woman" = Woman,
+                 "Educ1" = Educ1,
+                 "Educ2" = Educ2,
+                 "Educ3" = Educ3,
+                 "Inc1" = Inc1,
+                 "Inc2" = Inc2,
+                 "Inc3" = Inc3,
+                 "Inc4" = Inc4,
+                 "a" = 1, "b" = 1)
+```
+
+```{r eval=FALSE, message=FALSE, include=FALSE, results=, size="footnotesize"}
+posterior <- run.jags(modelString_ideo,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2", "beta3", "beta4", "beta5", "beta6", "beta7", "beta8", "beta9", "beta10", "beta11", "beta12", "beta13", "beta14", "beta15", "beta16", "beta17","sigma"),
+                      adapt = 1000, 
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+```
+
+```{r message=FALSE, size = "footnotesize"}
+post <- as.mcmc(posterior)
+```
+
+```{r message=FALSE, size = "footnotesize"}
+synf_ideo <- function(Age1, Age2, Age3, Age4, Age5, Race1, Race2, Race3, Race4, Woman,Educ1, Educ2, Educ3, Inc1, Inc2, Inc3, Inc4, index, n){
+  mean_Y <- post[index, "beta0"] +  Age1 * post[index, "beta1"] + Age2 * post[index, "beta2"] + Age3 * post[index, "beta3"] + Age4 * post[index, "beta4"] + Age5 * post[index, "beta5"] + Race1 * post[index, "beta6"] + Race1 * post[index, "beta7"] + Race1 * post[index, "beta8"] + Race1 * post[index, "beta9"] + Woman * post[index, "beta10"] + Educ1 * post[index, "beta11"] + Educ2 * post[index, "beta12"] + Educ3 * post[index, "beta13"] + Inc1 * post[index, "beta14"] + Inc2 * post[index, "beta15"] + Inc3 * post[index, "beta16"] + Inc4 * post[index, "beta17"]
+  synthetic_ideo <- rnorm(n, mean_Y, post[index, "sigma"])
+  data.frame(synthetic_ideo)
+}
+n <- dim(data)[1]
+syn_ideo <- data.frame(synf_ideo(data$Age1, data$Age2, data$Age3, data$Age4, data$Age5, data$Race1, data$Race2, data$Race3, data$Race4, data$SEX_s, data$Educ1, data$Educ2, data$Educ3, data$Inc1, data$Inc2, data$Inc3, data$Inc4, 1, n))
+syn_ideo <- round(syn_ideo$synthetic_ideo,0)
+data <- cbind(data, syn_ideo)
+colnames(data)[32] <- "IDEO_s"
+data <- data %>% filter(IDEO_s >=1, IDEO_s <=5)
+```
+
+```{r}
+test <- cbind(data$STATE, data$SEX, data$EDUC, data$INCOME, data$IDEO, data$AGE, data$RACE, data$SEX_s, data$EDUC_s, data$INC_s, data$IDEO_s)
+test <- data.frame(test)
+names(test) <- c("STATE", "SEX_o", "EDUC_o", "INCOME_o", "IDEO_o", "AGE_o", "RACE_o", "SEX_s", "EDUC_s", "INC_s", "IDEO_s")
+test
+```
+
+```{r}
+IDEO_o <- c()
+for (i in 1:5){
+  IDEO_o[i] <- sum(test$IDEO_o==i)
+}
+lbls <- c("(1) Very liberal", "(2) Somewhat liberal", "(3) Moderate", "(4) Somewhat conservative", "(5) Very conservative")
+df <- data.frame(
+  group = lbls,
+  value = IDEO_o
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+IDEO_s <- c()
+for (i in 1:5){
+  IDEO_s[i] <- sum(test$IDEO_s==i)
+}
+lbls <- c("(1) Very liberal", "(2) Somewhat liberal", "(3) Moderate", "(4) Somewhat conservative", "(5) Very conservative")
+df <- data.frame(
+  group = lbls,
+  value = IDEO_s
+  )
+ggplot(df, aes(x="", y=value, fill=group))+ geom_bar(width = 1, stat = "identity")+ coord_polar("y", start=0)
+```
+
+```{r}
+mean(as.numeric(test$IDEO_o))
+mean(as.numeric(test$IDEO_s))
+median(as.numeric(test$IDEO_o))
+median(as.numeric(test$IDEO_s))
+```
+
+We could see that the moderate groups are better preserved in our synthesized datasets, whereas the groups with more radical ideologies got shrunk a little bit. 
+
+```{r}
+test
+```
+
+
+```{r}
+model_o <- lm(as.numeric(IDEO_o) ~ SEX_o + EDUC_o + INCOME_o, data=test)
+model_s <- lm(as.numeric(IDEO_s) ~ SEX_o + EDUC_o + INCOME_o, data=test)
+```
+
+```{r}
+summary(model_o)
+```
+
+```{r}
+summary(model_s)
+```
+
+Judging from R-squared, we could see that my synthesized data has lost some utility in terms of the relationship between ideology and other variables in the dataset.
