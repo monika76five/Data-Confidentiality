@@ -1,0 +1,55 @@
+---
+header-includes:
+- \usepackage{color}
+- \usepackage[dvipsnames]{xcolor}
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+----
+ Spring 2020: MATH 301-56 Data Confidentiality
+---
+
+```{r}
+library(readxl)
+library(ggplot2)
+library(runjags)
+library(coda)
+```
+
+```{r}
+ACS_org <- read_excel("C:/Users/Ted Xie/Downloads/ACSdata_org.xlsx")
+ACS_syn <- read_excel("C:/Users/Ted Xie/Downloads/ACSdata_syn.xlsx")
+```
+
+```{r}
+n <- dim(ACS_org)[1]
+
+#expected_match_risk = sum(T_i/c_i)
+emr = 0
+for(i in 1:n){
+  match <- which(ACS_org$SEX == ACS_syn$SEX[i] & ACS_org$MAR == ACS_syn$MAR[i] & ACS_org$RACE == ACS_syn$RACE[i])
+  c_i <- length(match)
+  if(i == match){
+    emr = emr + 1/c_i
+  }
+}
+
+emr
+
+#true_match_rate = sum(K_i/N)
+tmr = 0
+for(i in 1:n){
+  match <- which(ACS_org$SEX == ACS_syn$SEX[i] & ACS_org$MAR == ACS_syn$MAR[i] & ACS_org$RACE == ACS_syn$RACE[i])
+  c_i <- length(match)
+  if(c_i == 1 & i == match){
+    tmr = tmr + 1/n
+  }
+}
+
+tmr
+
+#false_math_rate = sum(F_i/s)
+```
