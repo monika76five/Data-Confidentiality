@@ -152,15 +152,13 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 ### To-do (done before class on 3/24)
 
 1. Revisit the R functions in lecture slides (S20MATH301_RiskEvaluationMethods_1.pdf) about identification risk evaluation for categorical data.
-    1. In the datasets folder, find ```ACSdata_org.csv``` and ```ACSdata_syn.csv```.
+    1. In the datasets folder, find ```ACSdata_org.csv```, ```ACSdata_syn.csv```, ```ACSdata_syn1.csv```, and ```ACSdata_syn2.csv```.
         1. Note that these datasets exlucde the HISP variable in the ACS data dictionary, but every other variable stays the same with the same name and description.
-        2. Note that in ```ACSdata_syn.csv```, the following four variables are synthesized: ```LANX, WAOB, DIS, HICOV```.
-    2. <ins>Assume the known variables (by the intruder) are: ```SEX, RACE, MAR```, calculate the expected match risk, the true match rate, and the false match rate.</ins> Note that:
-        1. "records with the highest match probability for the target" refers to the records sharing the same known combination.
-        2. "the total number of target records" should be the total number of records in the dataset (i.e. we evaluate the identification disclosure risk for every observation).
-        3. There is no package for these calculations. Work through these summaries and understand how to calculate these quantities with the ACS sample. Writing a function might be useful for automating the process.
+        2. Note that in ```ACSdata_syn.csv```, ```ACSdata_syn1.csv```, and ```ACSdata_syn2.csv```, the following four variables are synthesized: ```LANX, WAOB, DIS, HICOV```.
+    2. <ins>Assume the known variables (by the intruder) are: ```SEX, RACE, MAR```, calculate the expected match risk, the true match rate, and the false match rate.</ins>
+        1. Note that ```m = 3``` in this case. You should calculate the expected match risk, the true match rate, and the false match rate for each synthetic dataset, and take the averages to get the summaries.
  
-2. Design your own identification disclosure risk measure and evaluation for continuous outcome. Do that for your CE synthesis, where ```log(Income)``` is synthesized. Prepare a few slides of your method and your results.
+2. <ins>**Design your own identification disclosure risk measure and evaluation for continuous outcome. Do that for your CE synthesis, where ```log(Income)``` is synthesized. Prepare a few slides of your method and your results**.</ins>
 
 3. <ins>**Present your synthesis model(s) and utility evaluation for your project dataset(s)**.</ins>
 
