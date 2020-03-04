@@ -157,6 +157,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
         2. Note that in ```ACSdata_syn.csv```, ```ACSdata_syn1.csv```, and ```ACSdata_syn2.csv```, the following four variables are synthesized: ```LANX, WAOB, DIS, HICOV```.
     2. <ins>Assume the known variables (by the intruder) are: ```SEX, RACE, MAR```, calculate the expected match risk, the true match rate, and the false match rate.</ins>
         1. Note that ```m = 3``` in this case. You should calculate the expected match risk, the true match rate, and the false match rate for each synthetic dataset, and take the averages to get the summaries.
+        2. Try writing functions to perform these calculations. Lecture slides page 26 (S20MATH301_RiskEvaluationMethods_1.pdf) includes recommendations about how to update the provided functions for ```m > 1```.
  
 2. <ins>Design your own identification disclosure risk measure and evaluation for continuous outcome. Do that for your CE synthesis, where ```log(Income)``` is synthesized. Prepare **a few slides of your method and your results**.</ins>
 
