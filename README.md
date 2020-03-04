@@ -158,7 +158,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
     2. <ins>Assume the known variables (by the intruder) are: ```SEX, RACE, MAR```, calculate the expected match risk, the true match rate, and the false match rate.</ins>
         1. Note that ```m = 3``` in this case. You should calculate the expected match risk, the true match rate, and the false match rate for each synthetic dataset, and take the averages to get the summaries.
  
-2. <ins>**Design your own identification disclosure risk measure and evaluation for continuous outcome. Do that for your CE synthesis, where ```log(Income)``` is synthesized. Prepare a few slides of your method and your results**.</ins>
+2. <ins>Design your own identification disclosure risk measure and evaluation for continuous outcome. Do that for your CE synthesis, where ```log(Income)``` is synthesized. Prepare **a few slides of your method and your results**.</ins>
 
 3. <ins>**Present your synthesis model(s) and utility evaluation for your project dataset(s)**.</ins>
 
