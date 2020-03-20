@@ -29,3 +29,6 @@
 - Kinney, S. K., Reiter, J. P., Reznek, A. P., Miranda, J., Jarmin, R. S., and Abowd, J. M. (2011). Towards Unrestricted Public Use Business Microdata: The Synthetic Longitudinal Business Database. *International Statistical Review*, Vol. 79, No. 3, pp. 362-384.
 
 - Wang, H. and Reiter, J. P. (2012). Multiple imputation for sharing precise geopgraphies in public use data. *Annals of Applied Statistics*, 6, 229-252.
+
+- Hu, J. and Savitsky, T. D. (2018+). Bayesian Data Synthesis and Disclosure Risk Quantification: An Application to the Consumer Expenditure Surveys.
+
