@@ -6,6 +6,8 @@ Here is [the tentative schedule](https://docs.google.com/spreadsheets/d/119NV9Zk
 
 Here is [a growing YouTube playlist of the lecture recordings from Spring 2020](https://www.youtube.com/playlist?list=PL_lWxa4iVNt0XPY0E0MDuGhKvbq_767mr).
 
+Here is our [Zoom meeting link](https://vassar.zoom.us/j/829733465), beginning on Tuesdsay 3/24.
+
 Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 
 ## Introduction, Tuesday 1/28/2020
