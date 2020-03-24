@@ -80,7 +80,6 @@ for(i in 1:N){
 print(expected_match_risk)
 ```
 
-
 ### (ii) The true match rate:
 
 ```{r}
