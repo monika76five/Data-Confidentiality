@@ -37,7 +37,6 @@ Our goal is to generate synthetic data from the estimated Bayesian synthesizer f
 The two most sensitive variables are a person's imputed total earnings from the previous calender year and total hours worked last week or usually. The latter contains 99 categories, while the former contains 70 categories. 
 If an intruder were to know one's total earnings or amount of work time then they can obtain the person's information with much greater probability than if they had access to another variable. 
 
-
 ```{r include=FALSE}
 ## Remove missing observations 
 na.remove(ipumsdata$AGE)
