@@ -20,7 +20,6 @@ library(coda)
 library(fastDummies)
 library(tinytex)
 ```
-
 ```{r}
 origdata<- read.csv("CEdata.csv")
 head(origdata)
