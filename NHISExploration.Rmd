@@ -1,0 +1,311 @@
+---
+title: "NHISExploration"
+author: "Sarah Boese"
+date: "2/16/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r, message = FALSE}
+library(ProbBayes)
+library(dplyr)
+library(ggplot2)
+require(gridExtra)
+library(reshape)
+library(runjags)
+library(coda)
+library(tidyverse)
+library(fastDummies)
+crcblue <- "#2905a1"
+```
+
+I wnated to look into survey data pertaining to public health. I found the National Health Interview Suvey as an example. I don't beleive that any of the information here has been altered. However, some information can be left out for the protection of a survey participants privacy. For example, the only geographic information released about a participant is REGION which can take four arguments: NORTHEAST, MIDWEST, SOUTH, WEST. 
+```{r}
+NHISSampleAdult<-read.csv("samadult.csv")
+```
+
+Each piece of data from the SampleAdult sample is unique. Here we can see this because $n_unique$ is equal to $number_rows$. We can attribute this phenomenon to the fineness of detail within the survey (the data has 742 variables). 
+```{r}
+n_unique <- n_distinct(NHISSampleAdult)
+n_unique
+number_rows<- nrow(NHISSampleAdult)
+number_rows
+```
+
+```{r}
+hist(NHISSampleAdult$DOINGLWA)
+```
+
+```{r}
+hist(NHISSampleAdult$REGION)
+```
+
+
+First, I wanted to see given certain information about demographics of participants in the survey if an intruder could find information about the health of specific participants. Here we have only two participants who identify as Native American, Mexican-American women from the south. Clearly, there is some high level of attribute disclosure risk inthis data. 
+```{r}
+AIAN<- NHISSampleAdult %>% 
+  filter(RACERPI2 == 1 & REGION==1 & SEX == 2 & HISPAN_I == 3)
+nrow(AIAN)
+nrow(AIAN)/nrow(NHISSampleAdult)
+
+hist(NHISSampleAdult$FLA1AR)
+```
+
+I have decided to contain my synthesis model to a small portion of the 742 fields within the NHIS Sample adult survey. 
+
+```{r}
+
+NHISdata<- NHISSampleAdult %>%
+  select(HHX, FPX, REGION, SEX, HISPAN_I, RACERPI2, AGE_P, DOINGLWA, WRKCATA, WKDAYR, FLA1AR, ALCNDRT) %>%
+  filter(FLA1AR!=3 & DOINGLWA!=7 & DOINGLWA!=9 & WKDAYR<367)
+
+```
+
+```{r}
+hist(NHISdata$DOINGLWA)
+sum(NHISdata$FLA1AR==2)/nrow(NHISdata) 
+sum(NHISdata$ALCNDRT==1)/nrow(NHISdata)
+sum(NHISdata$DOINGLWA==9)
+```
+
+```{r}
+synthesize_lim <- function(index, n, post_lim){
+  synthetic_lim <- c()
+  synthetic_lim <- rbinom(n, 1, post_lim[index,"p"])
+  return(data.frame(synthetic_lim))
+}
+
+modelString_lim <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dbern(p)
+}
+## priors
+p ~ dbeta(57, 43)
+}
+"
+
+limitations <- NHISdata$FLA1AR - 1
+y_lim = as.vector(limitations)
+N = length(y_lim)  
+
+the_data_lim <- list("y" = y_lim,
+                 "N" = N, "mu0"=0)
+
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+
+synthesize_lim_func<-function(){
+posterior_lim <- run.jags(modelString_lim,
+                      n.chains = 1,
+                      data = the_data_lim,
+                      monitor = c("p"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+
+
+post_lim <- as.mcmc(posterior_lim)
+
+n <- dim(NHISdata)[1]
+syn_lim <- synthesize_lim(1, n, post_lim)
+names(syn_lim)=c("synthesized_func_lim")
+return(syn_lim)
+}
+```
+
+
+```{r}
+ modelString_stat <-"
+model {
+## sampling
+for (i in 1:N){
+    y[i,] ~ dmulti(p[i, 1:C],1)
+    p[i,1:C] ~ ddirch(alpha[])
+}
+## priors
+alpha<-c(1,1,1,1,1)
+} "
+```
+
+```{r}
+
+NHISdata$Stat1 = fastDummies::dummy_cols(NHISdata$DOINGLWA)[,names(fastDummies::dummy_cols(NHISdata$DOINGLWA)) == ".data_1"]
+NHISdata$Stat2 = fastDummies::dummy_cols(NHISdata$DOINGLWA)[,names(fastDummies::dummy_cols(NHISdata$DOINGLWA)) == ".data_2"]
+NHISdata$Stat3 = fastDummies::dummy_cols(NHISdata$DOINGLWA)[,names(fastDummies::dummy_cols(NHISdata$DOINGLWA)) == ".data_3"]
+NHISdata$Stat4 = fastDummies::dummy_cols(NHISdata$DOINGLWA)[,names(fastDummies::dummy_cols(NHISdata$DOINGLWA)) == ".data_4"]
+NHISdata$Stat5 = fastDummies::dummy_cols(NHISdata$DOINGLWA)[,names(fastDummies::dummy_cols(NHISdata$DOINGLWA)) == ".data_5"]
+
+y<-matrix(data=NA, nrow=nrow(NHISdata), ncol=5)
+y[,1]=NHISdata$Stat1
+y[,2]=NHISdata$Stat2
+y[,3]=NHISdata$Stat3
+y[,4]=NHISdata$Stat4
+y[,5]=NHISdata$Stat5
+N<-dim(NHISdata)[1]
+
+the_data_stat <- list("y" = y,
+                 "N" = N, "C"=5)
+
+systhesis_stat<-function(index, n, post_stat){
+  synthetic_stat <- c()
+  return <-synthetic_stat <- rbinom(n, 1, post_stat[index,"p"])
+  return(data.frame(synthetic_stat))
+}
+
+synthesis_stat_func = function(){
+posterior_stat <- run.jags(modelString_stat,
+                      n.chains = 1,
+                      data = the_data_stat,
+                      monitor = c("p"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+
+post_stat <- as.mcmc(posterior_stat)
+
+n <- dim(NHISdata)[1]
+syn_stat <- synthesize_stat(1, n, post_stat)
+names(syn_stat)=c("syn_emp_stat_1", "syn_emp_stat_2", "syn_emp_stat_3", "syn_emp_stat_4", "syn_emp_stat_5")
+return(syn_stat)
+}
+```
+
+```{r}
+hist(NHISdata$WKDAYR)
+```
+
+```{r}
+synthesize_wrk <- function(X, index, n, post_wrk){
+  mean_Y <- post_wrk[index, "beta0"] + X$x_lim * post_wrk[index, "beta1"] + X$x_stat_1 * post_wrk[index, "beta2"] +   X$x_stat_2 * post_wrk[index, "beta3"] +  X$x_stat_3 * post_wrk[index, "beta4"] 
+  + X$x_stat_4 * post_wrk[index, "beta5"]
+  + X$x_stat_5 * post_wrk[index, "beta6"]
+  synthetic_Y <- rnorm(n,mean_Y, post_wrk[index,"sigma"])
+  synthetic_Y = as.integer(synthetic_Y)
+  data.frame(synthetic_Y)
+}
+
+modelString_wrk <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_lim[i] +
+beta2*x_stat_1[i] + beta3*x_stat_2[i] +
+beta4*x_stat_3[i] + beta5*x_stat_4[i] +
+beta6*x_stat_5[i], invsigma2)T(0,367)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+
+synthesis_wrk_func<- function(syn_lim, syn_stat){
+  y_wrk=as.vector(NHISdata$WKDAYR)
+  x_no_lim<-syn_lim[,1]
+  syn_lim = syn_lim %>%
+    mutate(x_lim_data = if_else(synthesized_func_lim==1, 0, 1))
+  x_lim<-as.vector(syn_lim$x_lim_data)
+  x_stat<-as.matrix(syn_stat)
+  x_stat_1<-x_stat[,1]
+  x_stat_2<-x_stat[,2]
+  x_stat_3<-x_stat[,3]
+  x_stat_4<-x_stat[,4]
+  x_stat_5<-x_stat[,5]
+  N_wrk=nrow(NHISdata)
+    
+  
+  the_data_wrk <- list("y" = y_wrk, "x_lim" = x_lim,
+    "x_stat_1" = x_stat_1,"x_stat_2" = x_stat_2,"x_stat_3" = x_stat_3,
+    "x_stat_4" = x_stat_4, "x_stat_5" = x_stat_5,
+                 "mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+                 "mu6" = 0, "g6" = 1,
+                 "a" = 1, "b" = 1, "N" = N_wrk)
+  
+  
+  posterior_stat <- run.jags(modelString_wrk, 
+                    n.chains = 1,
+                    data = the_data_wrk,
+                    monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "beta4", "beta5",
+                                  "beta6", "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+
+post_stat <- as.mcmc(posterior_stat)
+
+params<-data.frame(x_lim, x_stat_1, x_stat_2, x_stat_3, x_stat_4, x_stat_5)
+n <- dim(NHISdata)[1]
+syn_wrk <- synthesize_wrk(params, 1, n, post_stat)
+names(syn_wrk)=c("synthesized_lost_wrk")
+return(syn_wrk)
+}
+```
+
+
+
+```{r}
+syn_lim<-synthesize_lim_func()
+```
+
+```{r}
+syn_stat<- synthesis_stat_func()
+
+```
+
+```{r, eval=FALSE}
+syn_stat<-NHISdata %>%
+  select(Stat1, Stat2, Stat3, Stat4, Stat5)
+```
+
+```{r, error=FALSE, eval=FALSE}
+synthesis_lost_work<-synthesis_wrk_func(syn_lim, syn_stat)
+```
+
+```{r}
+SyntheticData <- data.frame(synthesis_lost_work$synthesized_lost_wrk, NHISdata$WKDAYR)
+names(SyntheticData) = c("syn_lost_work", "org_lost_wrk")
+```
+
+```{r}
+data<- melt(SyntheticData)
+ggplot(data,aes(x=value, fill=variable)) + geom_density(alpha=0.25)
+```
+
+```{r, eval=FALSE}
+summary = summarize_all(SyntheticData, .funs=c(mean, median))
+names(summary) = c("SyntheticLogIncomeMean", "SyntheticLogIncomeMedian","LogTotalIncomeMean", "LogTotalIncomeMedian")
+summary
+```
+
+```{r, eval=FALSE}
+synthetic_new_T<-data.frame(synthetic_new$logIncome_syn, integer(length=994) +1, integer(length=994))
+names(synthetic_new_T) = c("LogIncome", "T", "T_inv")
+
+original_T<-data.frame(CESample$LogTotalIncome, integer(length=994), integer(length=994)+1)
+names(original_T)= c("LogIncome", "T", "T_inv")
+
+merged_T<- bind_rows(synthetic_new_T, original_T)
+```
