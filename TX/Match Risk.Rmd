@@ -24,32 +24,74 @@ ACS_org <- read_excel("C:/Users/Ted Xie/Downloads/ACSdata_org.xlsx")
 ACS_syn <- read_excel("C:/Users/Ted Xie/Downloads/ACSdata_syn.xlsx")
 ```
 
+
 ```{r}
+CalculateKeyQuantities <- function(origdata, syndata, known.vars, syn.vars, n){
+  origdata <- origdata
+  syndata <- syndata
+  n <- n
+  
+  c_vector <- rep(NA, n)
+  T_vector <- rep(NA, n)
+  
+  for (i in 1:n){
+  match <- (eval(parse(text=paste("origdata$",syn.vars,"[i]==syndata$",syn.vars,sep="",collapse="&"))) & eval(parse(text=paste("origdata$",known.vars,"[i]==syndata$",known.vars,sep="",collapse="&"))))
+  
+  match.prob <- ifelse(match, 1/sum(match), 0)
+  if (max(match.prob) > 0){
+    c_vector[i] <- length(match.prob[match.prob == max(match.prob)])
+  }
+  else
+    c_vector[i] <- 0
+    T_vector[i] <- is.element(i, rownames(origdata)[match.prob == max(match.prob)])
+  }
+  
+  K_vector <- (c_vector * T_vector == 1)
+  F_vector <- (c_vector * (1 - T_vector) == 1)
+  s <- length(c_vector[c_vector == 1 & is.na(c_vector) == FALSE])
+  res_r <- list(c_vector = c_vector,
+                T_vector = T_vector,
+                K_vector = K_vector,
+                F_vector = F_vector,
+                s = s
+                )
+  return(res_r)
+}
+```
+
+```{r}
+known.vars <- c("SEX", "RACE", "MAR")
+syn.vars <- c("LANX", "WAOB", "DIS", "HICOV")
 n <- dim(ACS_org)[1]
+KeyQuantities <- CalculateKeyQuantities(ACS_org, ACS_syn, known.vars, syn.vars, n)
+```
 
-#expected_match_risk = sum(T_i/c_i)
-emr = 0
-for(i in 1:n){
-  match <- which(ACS_org$SEX == ACS_syn$SEX[i] & ACS_org$MAR == ACS_syn$MAR[i] & ACS_org$RACE == ACS_syn$RACE[i])
-  c_i <- length(match)
-  if(i == match){
-    emr = emr + 1/c_i
-  }
+```{r}
+IdentificationRisk <- function(c_vector, T_vector, K_vector, F_vector, s, N){
+  nonzero_c_index <- which(c_vector > 0)
+  exp_match_risk <- sum(1/c_vector[nonzero_c_index]*T_vector[nonzero_c_index])
+  true_match_rate <- sum(na.omit(K_vector))/N
+  false_match_rate <- sum(na.omit(F_vector))/s
+  res_r <- list(exp_match_risk = exp_match_risk,
+                true_match_rate = true_match_rate,
+                false_match_rate = false_match_rate
+                )
+  return(res_r)
 }
+```
 
-emr
+```{r}
+c_vector <- KeyQuantities[["c_vector"]]
+T_vector <- KeyQuantities[["T_vector"]]
+K_vector <- KeyQuantities[["K_vector"]]
+F_vector <- KeyQuantities[["F_vector"]]
+s <- KeyQuantities[["s"]]
+N <- n
+ThreeSummaries <- IdentificationRisk(c_vector, T_vector, K_vector, F_vector, s, N)
+```
 
-#true_match_rate = sum(K_i/N)
-tmr = 0
-for(i in 1:n){
-  match <- which(ACS_org$SEX == ACS_syn$SEX[i] & ACS_org$MAR == ACS_syn$MAR[i] & ACS_org$RACE == ACS_syn$RACE[i])
-  c_i <- length(match)
-  if(c_i == 1 & i == match){
-    tmr = tmr + 1/n
-  }
-}
-
-tmr
-
-#false_math_rate = sum(F_i/s)
+```{r}
+ThreeSummaries[["exp_match_risk"]]
+ThreeSummaries[["true_match_rate"]]
+ThreeSummaries[["false_match_rate"]]
 ```

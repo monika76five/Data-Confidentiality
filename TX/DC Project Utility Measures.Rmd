@@ -22,10 +22,11 @@ library(coda)
 
 ```{r}
 project <- read_excel("Data Confidentiality Project Data.xlsx")
+syn_project <- read_excel("Data Confidentiality Project Synthesis 2.xlsx")
 ```
 
 ```{r}
-df1 <- data.frame(Income = syn_project$syn_SALARY, degree = project$DGRDG, syn = 1)
+df1 <- data.frame(Income = syn_project$SALARY, degree = project$DGRDG, syn = 1)
 df2 <- data.frame(Income = project$SALARY, degree = project$DGRDG, syn = 0)
 merged <- rbind(df1, df2)
 logistic <- glm(syn ~ Income + degree, data = merged, family = "binomial")
@@ -43,7 +44,7 @@ U_p
 Cluster Analysis Measure
 ```{r}
 clusters <- hclust(dist(merged[,1:2]), method = 'average')
-G <- 50
+G <- 1000
 clusterCut <- cutree(clusters, G)
 cluster_S <- as.data.frame(cbind(clusterCut,merged$syn))
 names(cluster_S) <- c("cluster", "S")
@@ -58,10 +59,10 @@ U_c
 Emperical CDF Measures
 ```{r}
 S_x <- ecdf(project$SALARY)
-S_y <- ecdf(syn_project$syn_SALARY)
+S_y <- ecdf(syn_project$SALARY)
 
-percentile_orig <- S_x(merged[,"SALARY"])
-percentile_syn <- S_y(merged[,"SALARY"])
+percentile_orig <- S_x(merged[,"Income"])
+percentile_syn <- S_y(merged[,"Income"])
 
 ecdf_diff <- percentile_orig - percentile_syn
 
