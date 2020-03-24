@@ -166,3 +166,16 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm @ RH 403.
 3. <ins>**Present your synthesis model(s) and utility evaluation for your project dataset(s)**.</ins>
 
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
+
+
+## Methods for Disclosure Risks Evaluation \#3, Tuesday 3/31/2020
+
+### To-do (done before class on 3/31)
+
+1. <ins>Read ```Hu, J. (2019)``` Section 4 in the References folder. <ins>
+    1. <ins> Try to get a solid understanding of the key estimating steps. <ins>
+    2. <ins> Explore online how to do an importance sampling alogrithm. Think about how to implement that for your project. <ins?>
+    
+2. <ins>**Present your synthesis model(s), utility evaluation, and identification risk evaluation for your project dataset(s)**.</ins>
+
+**Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
