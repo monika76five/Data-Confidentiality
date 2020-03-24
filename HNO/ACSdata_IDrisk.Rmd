@@ -161,7 +161,7 @@ The expected match risk is 0.00414 probability average for each record to be cor
 0.0005666667*10000
 ```
 
-5.666667, or approximately 6 records are correct unique matches
+5.666667, or approximately 6 records are correct unique matches.
 
 ```{r}
 (s1 * ThreeSummaries3[["false_match_rate"]] + s2 * ThreeSummaries3[["false_match_rate"]] + s3 * ThreeSummaries3[["false_match_rate"]])/3
