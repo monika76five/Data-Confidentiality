@@ -155,7 +155,7 @@ ThreeSummaries3 <- IdentificationRisk(c_vector3, T_vector3, K_vector3, F_vector3
 41.46743/10000
 ```
 
-The expected match risk is 0.00414 probability average for each record to be correctly identified
+The expected match risk is 0.00414 probability average for each record to be correctly identified.
 
 ```{r}
 0.0005666667*10000
