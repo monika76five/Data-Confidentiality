@@ -34,7 +34,6 @@ Let $c_i$ be the number of records with the highest match probability for the ta
 ### (i) The expected match risk:
 
 
-
 ```{r eval=FALSE, include=FALSE}
 total_data <- cbind(acsdata_org, syn_sex, syn_race, syn_mar)
 
