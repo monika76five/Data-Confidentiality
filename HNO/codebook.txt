@@ -101,7 +101,8 @@ EDUCREC2		Educational attainment recode, intervalled
 97		Unknown-refused
 98		Unknown-not ascertained
 99		Unknown (1996 forward - Don't know)
-
+ 
+ 
 HOURSWRK		Total hours worked last week or usually
 00		NIU
 01		1
