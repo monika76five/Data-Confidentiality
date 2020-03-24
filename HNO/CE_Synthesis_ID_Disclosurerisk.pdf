@@ -1,0 +1,274 @@
+---
+title: "Methods for Utility Evaluation #2"
+author: "Henrik Olsson"
+date: "February 25, 2020"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+subtitle: MATH 301 Data Confidentiality
+---
+
+```{r include=FALSE}
+library(readr)
+library(LearnBayes)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(runjags)
+library(coda)
+library(fastDummies)
+library(tinytex)
+```
+
+```{r}
+origdata<- read.csv("CEdata.csv")
+head(origdata)
+```
+
+### Read Drechsler (2001) Chapter 6-1, 7-1 in the References folder, and prepare the following results.
+
+
+```{r}
+origdata$LogExp <- log(origdata$Expenditure)
+origdata$LogIncome <- log(origdata$Income)
+
+## create indicator variable for Rural (2)
+origdata$Rural = fastDummies::dummy_cols(origdata$UrbanRural)[,names(fastDummies::dummy_cols(origdata$UrbanRural))
+== ".data_1"]
+
+## create indicator variables for Black (3), Native American (4), 
+## Asian (5), Pacific Islander (6), and Multi-race (7)
+origdata$Race_Black = fastDummies::dummy_cols(origdata$Race)[,names(fastDummies::dummy_cols(origdata$Race)) == ".data_2"]
+origdata$Race_NA = fastDummies::dummy_cols(origdata$Race)[,names(fastDummies::dummy_cols(origdata$Race)) == ".data_3"]
+origdata$Race_Asian = fastDummies::dummy_cols(origdata$Race)[,names(fastDummies::dummy_cols(origdata$Race)) == ".data_4"]
+origdata$Race_PI = fastDummies::dummy_cols(origdata$Race)[,names(fastDummies::dummy_cols(origdata$Race)) == ".data_5"]
+origdata$Race_M = fastDummies::dummy_cols(origdata$Race)[,names(fastDummies::dummy_cols(origdata$Race)) == ".data_6"]
+```
+
+```{r}
+## JAGS script
+modelString <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_income[i] + beta2*x_rural[i] +
+beta3*x_race_B[i] + beta4*x_race_N[i] +
+beta5*x_race_A[i] + beta6*x_race_P[i] +
+beta7*x_race_M[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+beta7 ~ dnorm(mu7, g7)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}"
+```
+
+```{r}
+y = as.vector(origdata$LogExp)
+x_income = as.vector(origdata$LogIncome)
+x_rural = as.vector(origdata$Rural)
+x_race_B = as.vector(origdata$Race_Black)
+x_race_N = as.vector(origdata$Race_NA)
+x_race_A = as.vector(origdata$Race_Asian)
+x_race_P = as.vector(origdata$Race_PI)
+x_race_M = as.vector(origdata$Race_M)
+N = length(y) # Compute the number of observations
+
+
+## Pass the data and hyperparameter values to JAGS
+the_data <- list("y" = y, "x_income" = x_income,
+"x_rural" = x_rural, "x_race_B" = x_race_B,
+"x_race_N" = x_race_N, "x_race_A" = x_race_A,
+"x_race_P" = x_race_P, "x_race_M" = x_race_M,
+"N" = N,
+"mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+"mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+"mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+"mu6" = 0, "g6" = 1, "mu7" = 0, "g7" = 1,
+"a" = 1, "b" = 1)
+```
+
+```{r}
+initsfunction <- function(chain){
+.RNG.seed <- c(1,2)[chain]
+.RNG.name <- c("base::Super-Duper",
+"base::Wichmann-Hill")[chain]
+return(list(.RNG.seed=.RNG.seed,
+.RNG.name=.RNG.name))
+}
+```
+
+```{r}
+## Run the JAGS code for this model:
+posterior_MLR <- run.jags(modelString,
+n.chains = 1,
+data = the_data,
+monitor = c("beta0", "beta1", "beta2",
+"beta3", "beta4", "beta5",
+"beta6", "beta7", "sigma"),
+adapt = 1000,
+burnin = 5000,
+sample = 5000,
+thin = 20,
+inits = initsfunction)
+## JAGS output 
+summary(posterior_MLR)
+```
+
+```{r}
+plot(posterior_MLR, vars = "beta1")
+```
+
+```{r}
+## Saving posterior parameter draws
+post <- as.mcmc(posterior_MLR)
+
+## Generating one set of sythetic data
+synthesize <- function(X, index, n){
+  mean_Y <- post[index, "beta0"] +  X$x_income * post[index, "beta1"] +  X$x_rural * post[index, "beta2"] +  X$x_race_B * post[index, "beta3"] +  X$x_race_N * post[index, "beta4"] +  X$x_race_A * post[index, "beta5"] +  X$x_race_P * post[index, "beta6"] +  X$x_race_M * post[index, "beta7"] 
+  synthetic_Y <- rnorm(n, mean_Y, post[index, "sigma"])
+  data.frame(X$x_income, synthetic_Y)
+}
+```
+
+#### i. Generate m = 20 synthetic datasets given your synthesis model for the CE sample. If you are using set.seed(), make sure that you do not generate the same synthetic data for each m = 20.
+
+```{r}
+set.seed(123)
+m <- 20
+n <- dim(origdata)[1]
+synthetic_m <- vector("list",m)
+new <- data.frame(x_income, x_rural, x_race_B, x_race_N, x_race_A, x_race_P, x_race_M)
+for (l in 1:m){
+  synthetic_one <- synthesize(new, 4980+l, n)
+  names(synthetic_one) <- c("OrigLogIncome", "SynLogIncome")
+  synthetic_m[[l]] <- synthetic_one
+}
+```
+
+#### ii. Estimate a few analysis-specific utility measures, e.g. the mean and median of a continuous synthetic variable, the regression analysis coefficients, for each synthetic dataset.
+
+```{r}
+## Estimates the mean, median, mode, variance, and range of synthetic log Income, as well as regression analysis coefficients
+mean <- c()
+median <- c()
+mode <- c()
+variance <- c()
+range <- c()
+
+for (l in 1:m){
+  mean[l] = mean(synthetic_m[[l]]$SynLogIncome)
+  median[l] = median(synthetic_m[[l]]$SynLogIncome)
+  mode[l] = mode(synthetic_m[[l]]$SynLogIncome)
+  variance[l] = var(synthetic_m[[l]]$SynLogIncome)
+  range[l] = range(synthetic_m[[l]]$SynLogIncome)
+  print(lm(origdata$LogExp ~ synthetic_m[[l]]$SynLogIncome))
+}
+
+syndata <- synthetic_m[[1]]
+```
+
+#### Step 1: calculate key quantities
+
+```{r echo = FALSE}
+## Step 1: calculate key quantities 
+
+
+CalculateKeyQuantities <- function(origdata, syndata, known.vars, syn.vars, n){
+  origdata <- origdata
+  syndata <- syndata
+  n <- n
+  c_vector <- rep(NA, n)
+  T_vector <- rep(NA, n)
+  for (i in 1:n){
+    match <- (eval(parse(text=paste("origdata$",syn.vars,"[i] ==
+                                      syndata$",syn.vars,sep="",collapse="&")))&
+                  eval(parse(text=paste("origdata$",known.vars,"[i]==
+                                        syndata$",known.vars,sep="",collapse="&"))))
+    match.prob <- ifelse(match, 1/sum(match), 0)
+    
+    if (max(match.prob) > 0){
+      c_vector[i] <- length(match.prob[match.prob == max(match.prob)])
+    }
+    else
+      c_vector[i] <- 0
+      T_vector[i] <- is.element(i, rownames(origdata)[match.prob == max(match.prob)])
+  }
+  
+  K_vector <- (c_vector * T_vector == 1)
+  F_vector <- (c_vector * (1 - T_vector) == 1)
+  s <- length(c_vector[c_vector == 1 & is.na(c_vector) == FALSE])
+  
+  res_r <- list(c_vector = c_vector,
+                T_vector = T_vector,
+                K_vector = K_vector,
+                F_vector = F_vector,
+                s = s
+  )
+  return(res_r)
+}
+```
+
+
+```{r warning=FALSE}
+known.vars <- c("Rural", "Race", "Expenditure")
+syn.vars <- c("LogIncome")
+CEdata <- data.frame(origdata$Rural, origdata$Race, origdata$Expenditure, origdata$LogIncome)
+CEdatasyn <- data.frame(syndata$Rural, syndata$Race, syndata$Expenditure, syndata$LogIncome)
+n <- dim(origdata)[1]
+KeyQuantities <- CalculateKeyQuantities(CEdata, CEdatasyn, known.vars, syn.vars, n)
+
+## Step 2: calculate 3 summary measures 
+
+IdentificationRisk <- function(c_vector, T_vector, K_vector, F_vector, s, N){
+  
+  nonzero_c_index <- which(c_vector > 0)
+  exp_match_risk <- sum(1/c_vector[nonzero_c_index]*T_vector[nonzero_c_index])
+  true_match_rate <- sum(na.omit(K_vector))/N
+  false_match_rate <- sum(na.omit(F_vector))/s
+  res_r <- list(exp_match_risk = exp_match_risk,
+                true_match_rate = true_match_rate,
+                false_match_rate = false_match_rate
+  )
+  return(res_r)
+}
+
+## each record is a target, therefore N = n
+
+c_vector <- KeyQuantities[["c_vector"]]
+T_vector <- KeyQuantities[["T_vector"]]
+K_vector <- KeyQuantities[["K_vector"]]
+F_vector <- KeyQuantities[["F_vector"]]
+s <- KeyQuantities[["s"]]
+N <- n
+ThreeSummaries <- IdentificationRisk(c_vector, T_vector, K_vector, F_vector, s, N)
+```
+
+##### Summaries:
+
+```{r}
+## Expected match risk
+ThreeSummaries[["exp_match_risk"]]
+```
+
+```{r}
+## True match rate
+ThreeSummaries[["true_match_rate"]]
+```
+
+```{r}
+## False match rate
+ThreeSummaries[["false_match_rate"]] 
+```
+
+### Results and Discussion
+
+I could not get the code to work for the identification disclosure risk for the continuous variable. 
