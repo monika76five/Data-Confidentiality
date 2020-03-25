@@ -174,7 +174,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm; use this Zoom 
 
 1. <ins>Read ```Hu, J. (2019)``` Section 4 in the References folder. <ins>
     1. <ins> Try to get a solid understanding of the key estimating steps. <ins>
-    2. <ins> Explore online how to do an importance sampling alogrithm. Think about how to implement that for your project. <ins?>
+    2. <ins> Explore online how to do an importance sampling alogrithm. Think about how to implement that for your project. <ins>
     
 2. <ins>**Present your synthesis model(s), utility evaluation, and identification risk evaluation for your project dataset(s)**.</ins>
 
