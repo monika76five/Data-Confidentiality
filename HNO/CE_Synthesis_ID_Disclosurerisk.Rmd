@@ -224,7 +224,7 @@ syn.vars <- c("LogIncome")
 CEdata <- data.frame(origdata$Rural, origdata$Race, origdata$Expenditure, origdata$LogIncome)
 CEdatasyn <- data.frame(syndata$Rural, syndata$Race, syndata$Expenditure, syndata$LogIncome)
 n <- dim(origdata)[1]
-KeyQuantities <- CalculateKeyQuantities(CEdata, CEdatasyn, known.vars, syn.vars, n)
+KeyQuantities1 <- CalculateKeyQuantities(CEdata, CEdatasyn, known.vars, syn.vars, n)
 
 ## Step 2: calculate 3 summary measures 
 
@@ -266,10 +266,9 @@ ThreeSummaries[["true_match_rate"]]
 
 ```{r}
 ## False match rate
-ThreeSummaries1[["false_match_rate"]] 
+ThreeSummaries[["false_match_rate"]] 
 ```
 
 ### Results and Discussion
-
 
 I could not get the code to work for the identification disclosure risk for the continuous variable. 
