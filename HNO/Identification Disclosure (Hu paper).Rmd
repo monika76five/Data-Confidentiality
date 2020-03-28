@@ -1,0 +1,108 @@
+---
+title: "Identification Disclosure Risk- Hu Paper"
+author: "Henrik Olsson"
+date: "March 1, 2020"
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    df_print: paged
+subtitle: MATH 301 Data Confidentiality
+---
+
+```{r include=FALSE}
+library(readr)
+library(LearnBayes)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(runjags)
+library(coda)
+library(imputeTS)
+library(fastDummies)
+library(tinytex)
+```
+
+```{r}
+acsdata_org <- read.csv("ACSdata_org.csv")
+acsdata_syn <- read.csv("ACSdata_syn.csv")
+```
+
+
+Let $c_i$ be the number of records with the highest match probability for the target $t_i$; let $T_i = 1$ if the true match is among the $c_i$ units and $T_i = 0$ otherwise. Let $K_i = 1$ when $c_iT_i = 1$ and $K_i = 0$ otherwise, and let $N$ denote the total number of target records. Finally, let $F_i = 1$ when $c_i(1-T_i) = 1$ and $F_i = 0$ otherwise, and let $s$ equal the number of records with $c_i = 1$.
+
+### (i) The expected match risk:
+
+
+
+```{r eval=FALSE, include=FALSE}
+total_data <- cbind(acsdata_org, syn_sex, syn_race, syn_mar)
+
+expect_match = 0
+true_match = 0
+N = dim(acsdata_org)
+
+for(i in 1:N){
+  select <- which(acsdata_org$SEX == syn_sex[i] & acsdata_org$MAR == syn_mar[i] & acsdata_org$RACE == syn_race[i])
+  c_i <- length(select)
+  if(i == select){
+    expected_match_risk = expect_match + 1/c_i
+  }
+}
+```
+
+
+
+
+
+```{r}
+## Reference from Kevin Ros
+syn_sex <- acsdata_syn$SEX 
+syn_race <- acsdata_syn$RACE
+syn_mar <- acsdata_syn$MAR
+
+N = nrow(acsdata_syn)
+n = nrow(acsdata_org)
+
+expected_match_risk = 0
+true_match_rate = 0
+
+for(i in 1:N){
+  c_i = 0
+  data = acsdata_org[acsdata_org$SEX == syn_sex[i] & acsdata_org$RACE == syn_race[i] & acsdata_org$MAR == syn_mar[i],]
+  
+  if(nrow(data) != 0){
+    expected_match_risk = expected_match_risk + (1/nrow(data))
+  }
+  if(nrow(data) == 1)
+    true_match_rate = true_match_rate + 1/N
+}
+print(expected_match_risk)
+```
+
+
+### (ii) The true match rate:
+
+```{r}
+print(true_match_rate)
+
+```
+
+
+### (iii) The false match rate:
+
+```{r}
+false_match_rate = 0
+for(i in 1:N){
+  
+  c_i = 1
+  s=nrow(c_i)
+  data = acsdata_org[acsdata_org$SEX == syn_sex[i] & acsdata_org$RACE == syn_race[i] & acsdata_org$MAR == syn_mar[i],]
+  
+  if(nrow(data) == 1){
+    false_match_rate = sum(false_match_rate/s) 
+  }
+}
+print(false_match_rate)
+```
+
