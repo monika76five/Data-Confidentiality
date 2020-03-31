@@ -32,3 +32,7 @@
 
 - Hu, J. and Savitsky, T. D. (2018+). Bayesian Data Synthesis and Disclosure Risk Quantification: An Application to the Consumer Expenditure Surveys.
 
+
+## Differential Privacy
+
+- DP - Intro, Definitions and Laplace Mechanism.pdf
