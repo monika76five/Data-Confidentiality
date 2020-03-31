@@ -1,0 +1,265 @@
+---
+title: "framingham health data  "
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library(runjags)
+library(coda)
+library(ggplot2)
+data2<- read.csv("frmgham2.csv")
+data2$sexd= fastDummies::dummy_cols(data2$SEX)[,names(fastDummies::dummy_cols(data2$SEX))== ".data_1"]
+data2$educhs= fastDummies::dummy_cols(data2$educ)[,names(fastDummies::dummy_cols(data2$educ))== ".data_2"]
+data2$educsc= fastDummies::dummy_cols(data2$educ)[,names(fastDummies::dummy_cols(data2$educ))== ".data_3"]
+data2$educc= fastDummies::dummy_cols(data2$educ)[,names(fastDummies::dummy_cols(data2$educ))== ".data_4"]
+data2$cigd= fastDummies::dummy_cols(data2$CURSMOKE)[,names(fastDummies::dummy_cols(data2$CURSMOKE))== ".data_1"]
+data2<- na.omit(data2)
+```
+```{r}
+modelString <-"
+model {
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_hr[i] + beta2*x_igpd[i] + beta3*x_age[i], invsigma2)
+}
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+y = as.vector(data2$BMI)
+x_hr = as.vector(data2$HEARTRTE)
+x_igpd = as.vector(data2$CIGPDAY)
+x_age = as.vector(data2$AGE)
+N = length(y) 
+```
+
+```{r}
+the_data2<- list("y" = y, "x_hr"= x_hr,
+                 "x_igpd"= x_igpd, "x_age"= x_age,
+                 "N" = N,
+                 "mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "a" = 1, "b" = 1)
+
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+posterior2<- run.jags(modelString,
+                      n.chains = 1,
+                      data = the_data2,
+                      monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+posterior2
+```
+```{r}
+post2 <- as.mcmc(posterior2)
+syn2<- function(X, index, n){
+  mean_Y <- post2[index, "beta0"] +  X$x_hr * post2[index, "beta1"] +  X$x_igpd * post2[index, "beta2"] +  X$x_age * post2[index, "beta3"]
+  syny<- rnorm(n,mean_Y, post2[index,"sigma"])
+  data.frame(X$y, syny)
+}
+n <- dim(data2)[1]
+frame2 <- data.frame(y, x_hr, x_igpd, x_age)
+syndata2<- syn2(frame2, 1, n)
+names(syndata2)<- c("oribmi", "synbmi")
+ggplot(syndata2, aes(x= oribmi, y= synbmi)) + geom_point(size = 1)
+```
+
+
+```{r}
+modelString2 <-"
+model {
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_age[i] + beta2*x_sexd[i] +
+beta3*x_educhs[i] + beta4*x_educsc[i] +
+beta5*x_educc[i], invsigma2)
+}
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}
+"
+y= as.vector(data2$BMI)
+x_cigd= as.vector(data2$AGE)
+x_sexd= as.vector(data2$sexd)
+x_educhs= as.vector(data2$educhs)
+x_educsc= as.vector(data2$educsc)
+x_educc= as.vector(data2$educc)
+N= length(y) 
+```
+
+```{r}
+the_data<- list("y" = y, "x_age"= x_age,
+                 "x_sexd"= x_sexd, "x_educhs"= x_educhs,
+                 "x_educsc"= x_educsc, "x_educc"= x_educc,
+                 "N" = N,
+                 "mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+                 "mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+                 "mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+                 "a" = 1, "b" = 1)
+
+initsfunction <- function(chain){
+  .RNG.seed <- c(1,2)[chain]
+  .RNG.name <- c("base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+              .RNG.name=.RNG.name))
+}
+posterior<- run.jags(modelString2,
+                      n.chains = 1,
+                      data = the_data,
+                      monitor = c("beta0", "beta1", "beta2",
+                                  "beta3", "beta4", "beta5",
+                                  "sigma"),
+                      adapt = 1000,
+                      burnin = 5000,
+                      sample = 5000,
+                      thin = 1,
+                      inits = initsfunction)
+posterior
+```
+```{r}
+post<- as.mcmc(posterior)
+syn<- function(X, index, n){
+  mean_Y<- post[index, "beta0"] + X$x_age * post[index, "beta1"] + X$x_sexd * post[index, "beta2"] + X$x_educhs * post[index, "beta3"] +  X$x_educsc * post[index, "beta4"] +  X$x_educc * post[index,   "beta5"]
+  syny<- rnorm(n,mean_Y, post[index,"sigma"])
+  data.frame(X$y, syny)
+}
+n<- dim(data2)[1]
+frame<- data.frame(y, x_age, x_sexd, x_educhs, x_educsc, x_educc)
+syndata<- syn(frame, 1, n)
+names(syndata)<- c("oribmi", "synbmi")
+```
+```{r}
+ggplot(syndata, aes(x= oribmi, y= synbmi)) + geom_point(size = 1)
+```
+
+```{r}
+n<- dim(data2)[1]
+m<- 20
+synm <- vector("list",m)
+for(i in 1:m){
+  new<- syn(frame, 2000 + i, n)
+  names(new)<- c("frame", "bmi")
+  synm[[i]]<- new
+}
+q <- rep(NA, m)
+v <- rep(NA, m)
+for (i in 1:m){
+  new<- synm[[i]]
+  q[i]<- mean(new$bmi)
+  v[i]<- var(new$bmi)/n
+}
+bm<- var(q)
+vbar<- mean(v)
+tp<- bm/m+vbar
+vp<- (m-1) * (1+vbar/(b_m/m))^2
+tp
+vp
+qbar<- mean(q)
+set.seed(123)
+tscore<- qt(p= 0.975, df= vp)
+int<- c(qbar-tscore*sqrt(tp), qbar+tscore*sqrt(tp))
+int
+```
+
+```{r}
+set.seed(123)
+orgmean<- mean(data2$BMI)
+orgsd<- sd(data2$BMI)
+orgt<- qt(p = 0.975, df = n-1)
+oriint<- c(orgmean-orgt*orgsd/sqrt(n), orgmean+ orgt*orgsd/sqrt(n))
+oriint
+```
+```{r}
+L_s = quantile(new$frame, 0.025)
+U_s = quantile(new$frame, 0.975)
+L_o = quantile(data2$BMI, 0.025)
+U_o = quantile(data2$BMI, 0.975)
+L_i = max(L_s, L_o)
+U_i = min(U_s, U_o)
+uti = (U_i - L_i) / (2 * (U_o - L_o)) + (U_i - L_i)/ (2 * (U_s - L_s))
+uti
+```
+```{r}
+CalculateKeyQuantities <- function(data, frame, known.vars, syn.vars, n){
+  data2 <- data2
+  frame <- frame
+  n <- n
+  c_vector <- rep(NA, n)
+  T_vector <- rep(NA, n)
+  for (i in 1:n){
+    match <- (eval(parse(text=paste("data2$",syn.vars,"[i]==
+                                      frame$",syn.vars,sep="",collapse="&")))&
+                  eval(parse(text=paste("data2$",known.vars,"[i]==
+                                        frame$",known.vars,sep="",collapse="&"))))
+    match.prob <- ifelse(match, 1/sum(match), 0)
+    
+    if (max(match.prob) > 0){
+      c_vector[i] <- length(match.prob[match.prob == max(match.prob)])
+    }
+    else
+      c_vector[i] <- 0
+      T_vector[i] <- is.element(i, rownames(data2)[match.prob == max(match.prob)])
+  }
+  
+  K_vector <- (c_vector * T_vector == 1)
+  F_vector <- (c_vector * (1 - T_vector) == 1)
+  s <- length(c_vector[c_vector == 1 & is.na(c_vector) == FALSE])
+  
+  res_r <- list(c_vector = c_vector,
+                T_vector = T_vector,
+                K_vector = K_vector,
+                F_vector = F_vector,
+                s = s
+  )
+  return(res_r)
+}
+known.vars <- c("AGE", "SEX", "educ")
+syn.vars <- c("BMI")
+n <- dim(data2)[1]
+KeyQuantities <- CalculateKeyQuantities(data2, frame, 
+                                        known.vars, syn.vars, n)
+IdentificationRisk <- function(c_vector, T_vector, K_vector, F_vector, s, N){
+  
+  nonzero_c_index <- which(c_vector > 0)
+  exp_match_risk <- sum(1/c_vector[nonzero_c_index]*T_vector[nonzero_c_index])
+  true_match_rate <- sum(na.omit(K_vector))/N
+  false_match_rate <- sum(na.omit(F_vector))/s
+  res_r <- list(exp_match_risk = exp_match_risk,
+                true_match_rate = true_match_rate,
+                false_match_rate = false_match_rate
+  )
+  return(res_r)
+}
+c_vector <- KeyQuantities[["c_vector"]]
+T_vector <- KeyQuantities[["T_vector"]]
+K_vector <- KeyQuantities[["K_vector"]]
+F_vector <- KeyQuantities[["F_vector"]]
+s <- KeyQuantities[["s"]]
+N <- n
+ThreeSummaries <- IdentificationRisk(c_vector, T_vector, K_vector, F_vector, s, N)
+ThreeSummaries[["exp_match_risk"]]
+ThreeSummaries[["true_match_rate"]]
+ThreeSummaries[["false_match_rate"]]
+```
+
