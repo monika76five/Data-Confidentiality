@@ -179,3 +179,19 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm; use this Zoom 
 2. <ins>**Present your synthesis model(s), utility evaluation, and identification risk evaluation for your project dataset(s)**.</ins>
 
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
+
+
+## Overview of Differential Privacy \#1, Tuesday 4/7/2020
+
+### To-do (done before class on 4/7)
+
+1. <ins>Visit following topics in lecture slides (S20MATH301_RiskEvaluationMethods_3.pdf): <ins>
+    1. <ins> Understand the importance sampling: the general approach and the approach in the CE example. <ins>
+    2. <ins> Understand the R scripts to calculate AR risk for CU 8. <ins>
+    3. <ins> Write your own function and report tbe probability and rank of all 994 CU's in the CE example. <ins>
+
+2. <ins>Read ```DP - Intro, Definitions and Laplace Mechanism.pdf``` in the References folder. <ins>
+    
+3. <ins>**Prepare 3-5 slides about your synthesis model(s) for your project, and prepare to present to the class.**<ins>
+    
+**Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
