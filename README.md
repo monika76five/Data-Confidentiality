@@ -185,9 +185,9 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm; use this Zoom 
 
 ### To-do (done before class on 4/7)
 
-1. <ins>Visit following topics in lecture slides (S20MATH301_RiskEvaluationMethods_3.pdf): <ins>
-    1. <ins> Understand the importance sampling: the general approach and the approach in the CE example. <ins>
-    2. <ins> Understand the R scripts to calculate AR risk for CU 8. <ins>
+1. Visit following topics in lecture slides (Lecture 9 S20MATH301_RiskEvaluationMethods_3.pdf): 
+    1. Understand importance sampling: the general approach and the approach in the CE example. 
+    2. Understand the R scripts to calculate AR risk for CU 8.
     3. <ins> Write your own function and report tbe probability and rank of all 994 CU's in the CE example. <ins>
 
 2. <ins>Read ```DP - Intro, Definitions and Laplace Mechanism.pdf``` in the References folder. <ins>
