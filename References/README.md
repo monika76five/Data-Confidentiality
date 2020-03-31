@@ -35,4 +35,4 @@
 
 ## Differential Privacy
 
-- DP - Intro, Definitions and Laplace Mechanism.pdf
+- Chapter 7 Differential Privacy: An Overview (7.1 - 7.3)
