@@ -335,29 +335,31 @@ sigma <- sqrt(pow(invsigma2, -1))
 ```
 
 ```{r}
-data = data[!data$EARNIMPOINT1 == 0,]
 
-y = log(data$EARNIMPOINT1)
-x_age = as.vector(data$AGE) ## age
-x_sex_male = as.vector(data$SEX$.data_1) ## male
-x_sex_female = as.vector(data$SEX$.data_2) ## female
-x_race_w = as.vector(data$RACE$.data_1) ## white
-x_race_b = as.vector(data$RACE$.data_2) ## black/african-american
-x_race_i = as.vector(data$RACE$.data_3) ## american indian
-x_race_a = as.vector(data$RACE$.data_4) ## asian
-x_race_o = as.vector(data$RACE$.data_5) ## other races
-x_educ_1 = as.vector(data$EDUC$.data_3) ## 4 years of high school or less
-x_educ_2 = as.vector(data$EDUC$.data_1) ## 4 years of college
-x_educ_3 = as.vector(data$EDUC$.data_2) ## 5+ years of college
-x_hourswrk = as.vector(data$HOURSWRK) ## hours of work
-x_health_cov = as.vector(data$HEALTH$.data_1) ## has health coverage
-x_health_nocov = as.vector(data$HEALTH$.data_2) ## has no health coverage
-x_hrsleep = as.vector(data$HRSLEEP) ## hours of sleep
-x_wor_daily = as.vector(data$WORRY$.data_2) ## worry daily
-x_wor_weekly = as.vector(data$WORRY$.data_5) ## worry weekly
-x_wor_monthly = as.vector(data$WORRY$.data_4) ## worry monthly
-x_wor_fewtimes = as.vector(data$WORRY$.data_3) ## worry few times a year
-x_wor_never = as.vector(data$WORRY$.data_1) ## worry never
+
+dataNoZeros = data[!data$EARNIMPOINT1 == 0,]
+
+y = log(dataNoZeros$EARNIMPOINT1)
+x_age = as.vector(dataNoZeros$AGE) ## age
+x_sex_male = as.vector(dataNoZeros$SEX$.data_1) ## male
+x_sex_female = as.vector(dataNoZeros$SEX$.data_2) ## female
+x_race_w = as.vector(dataNoZeros$RACE$.data_1) ## white
+x_race_b = as.vector(dataNoZeros$RACE$.data_2) ## black/african-american
+x_race_i = as.vector(dataNoZeros$RACE$.data_3) ## american indian
+x_race_a = as.vector(dataNoZeros$RACE$.data_4) ## asian
+x_race_o = as.vector(dataNoZeros$RACE$.data_5) ## other races
+x_educ_1 = as.vector(dataNoZeros$EDUC$.data_3) ## 4 years of high school or less
+x_educ_2 = as.vector(dataNoZeros$EDUC$.data_1) ## 4 years of college
+x_educ_3 = as.vector(dataNoZeros$EDUC$.data_2) ## 5+ years of college
+x_hourswrk = as.vector(dataNoZeros$HOURSWRK) ## hours of work
+x_health_cov = as.vector(dataNoZeros$HEALTH$.data_1) ## has health coverage
+x_health_nocov = as.vector(dataNoZeros$HEALTH$.data_2) ## has no health coverage
+x_hrsleep = as.vector(dataNoZeros$HRSLEEP) ## hours of sleep
+x_wor_daily = as.vector(dataNoZeros$WORRY$.data_2) ## worry daily
+x_wor_weekly = as.vector(dataNoZeros$WORRY$.data_5) ## worry weekly
+x_wor_monthly = as.vector(dataNoZeros$WORRY$.data_4) ## worry monthly
+x_wor_fewtimes = as.vector(dataNoZeros$WORRY$.data_3) ## worry few times a year
+x_wor_never = as.vector(dataNoZeros$WORRY$.data_1) ## worry never
 N = length(y) # Compute the number of observations
 
 ## Pass the data and hyperparameter values to JAGS
@@ -401,7 +403,7 @@ monitor = c("beta0", "beta1", "beta2",
 adapt = 1000,
 burnin = 5000,
 sample = 5000,
-thin = 1,
+thin = 20,
 inits = initsfunction)
 ## JAGS output 
 summary(posterior_MLR)
@@ -421,44 +423,35 @@ post <- as.mcmc(posterior_MLR)
 synthesize <- function(X, index, n){
   mean_Y <- post[index, "beta0"] +  X$x_age * post[index, "beta1"] +  X$x_sex_male * post[index, "beta2"] +  X$x_sex_female * post[index, "beta3"] +  X$x_race_w * post[index, "beta4"] +  X$x_race_b * post[index, "beta5"] +  X$x_race_i * post[index, "beta6"] +  X$x_race_a * post[index, "beta7"] +  X$x_race_o * post[index, "beta8"] +  X$x_educ_1 * post[index, "beta10"] +  X$x_educ_2 * post[index, "beta11"] +  X$x_educ_3 * post[index, "beta12"] +  X$x_hourswrk * post[index, "beta13"] +  X$x_health_cov * post[index, "beta14"] +  X$x_health_nocov * post[index, "beta15"] +  X$x_hrsleep * post[index, "beta16"] +  X$x_wor_daily * post[index, "beta17"] +  X$x_wor_weekly * post[index, "beta18"] +  X$x_wor_monthly * post[index, "beta19"] +  X$x_wor_fewtimes * post[index, "beta20"] +  X$x_wor_never * post[index, "beta21"] 
   synthetic_Y <- rnorm(n, mean_Y, post[index, "sigma"])
-  data.frame(X$y, synthetic_Y)
+  data.frame(data$EARNIMPOINT1, exp(synthetic_Y))
 }
 n <- dim(data)[1]
 params <- data.frame(y, x_age, x_sex_male, x_sex_female, x_race_w, x_race_b, x_race_i, x_race_a, x_race_o, x_educ_1, x_educ_2, x_educ_3, x_hourswrk, x_health_cov, x_health_nocov, x_hrsleep, x_wor_daily, x_wor_weekly, x_wor_monthly, x_wor_fewtimes, x_wor_never)
 synthetic_one <- synthesize(params, 1, n)
-names(synthetic_one) <- c("OrigLogIncome", "SynLogIncome")
+names(synthetic_one) <- c("OrigIncome", "SynIncome")
 ```
-
-TODO:
-
--figure out why synthesis is sticky in second part
--create synthesis function as the following:
-
-For each non-zero income produced in part A synthesis:
-  plug the values (i.e. x_age, x_sex, etc) for the given non-zero income row into synthesis function
-  synthesize income value based on params from second model and values from line above
-  store value
-  
--add evaluation / risk disclosure 
-
-
 
 ```{r}
-ggplot(synthetic_one, aes(x = OrigLogIncome, y = SynLogIncome)) + 
-  geom_point(size = 1) + 
-  labs(title = "Scatter plot of Synthetic log(Income) vs log(Income)") +
-  theme_bw(base_size = 6, base_family = "")
+for (i in 1:nrow(synthetic_one)){
+  if (synthetic_part1$CatIncomeSyn[i] == 0) {
+    synthetic_one$SynIncome[i] = 0
+  }
+  if (synthetic_one$SynIncome[i] > 150000){
+    synthetic_one$SynIncome[i] = 150000
+  }
+}
 ```
 
+```{r}
+ggplot(synthetic_one, aes(x = OrigIncome, y = SynIncome)) + 
+  geom_point(size = 1) + 
+  labs(title = "Scatter plot of Synthetic Income vs Original Income") +
+  theme_bw(base_size = 6, base_family = "") +
+  coord_cartesian(xlim = c(0, 155000)) + 
+  coord_cartesian(ylim = c(0, 155000))
 
 
-
-
-
-
-
-
-
+```
 
 
 ## Utility Evaluation 
