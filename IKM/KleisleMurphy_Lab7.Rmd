@@ -1,0 +1,234 @@
+---
+title: "Lab 7"
+author: "Isaac Kleisle-Murphy"
+date: "April 6, 2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Ingest and Setup
+```{r}
+library(runjags)
+library(dplyr)
+library(coda)
+library(stringr)
+library(tidyr)
+library(fastDummies)
+library(ggplot2)
+
+
+setwd("~/Documents/Swat_2020/Data_Privacy/Data-Confidentiality/datasets")
+CEdata = read.csv("CEdata.csv")%>%
+  mutate(logIncome = log(Income),
+         logExp = log(Expenditure))%>%
+  arrange(Race)%>%
+  fastDummies::dummy_cols(., c("Race"), remove_first_dummy = T)%>%
+  mutate(UrbanRural = UrbanRural - 1)
+```
+
+
+## Rebuild Synthesis Model in JAGS
+```{r}
+predictors = c("logExp", paste0("Race_", 2:6), "UrbanRural")
+
+the_data = list(
+  
+  Y = CEdata$logIncome,
+  N = nrow(CEdata),
+  X = CEdata[, predictors]%>%
+    as.matrix()%>%
+    unname()%>%
+    cbind(1, .),
+  X.dim = length(predictors) + 1,
+  I = diag(100),
+  Z = rep(0, 100)
+  
+)
+
+
+
+model_str = "
+
+model{
+
+for (ii in 1:N){
+Y[ii] ~ dnorm(Mu[ii], invsigma2)
+Mu[ii] <- inprod(Beta, X[ii, 1:X.dim])
+}
+
+Beta ~ dmnorm(Z[1:X.dim], I[1:X.dim, 1:X.dim])
+sigma <- 1/sqrt(invsigma2)
+invsigma2 ~ dgamma(1,1)
+
+}
+
+
+"
+
+
+fit = run.jags(model_str, data = the_data, n.chains = 2, burnin = 10000, sample = 1000, adapt = 1000, thin = 10,
+               monitor = c("Beta", "sigma"))
+
+posterior_df = data.frame(as.mcmc(fit))
+attr(posterior_df, "predictors") = predictors
+
+syn_logInc_helper <- function(df, posterior_df, S = 23){
+  
+  set.seed(S)
+  sl = sample(1:nrow(posterior_df), 1)
+  X = df[, attr(posterior_df, "predictors")]%>%
+    cbind(1, .)%>%
+    as.matrix()
+  B = posterior_df%>%
+    dplyr::select(-sigma)%>%
+    .[sl, ]%>%
+    as.matrix()
+  Mu = as.numeric(X%*%t(B))
+  sigma = posterior_df$sigma[sl]
+  
+  Y_syn = rnorm(length(Mu), Mu, sigma)
+  
+  return(Y_syn)
+  
+}
+```
+
+
+
+## Helper Functions for Risk Analysis
+```{r}
+compute_logsumexp <- function(log_vector){
+  log_vector_max <- max(log_vector)
+  exp_vector <- exp(log_vector - log_vector_max)
+  sum_exp <- sum(exp_vector)
+  log_sum_exp <- log(sum_exp) + log_vector_max
+  return(log_sum_exp)
+}
+
+
+
+importance_sample <- function(i, H = 50){
+  
+  y_i <- CEdata_org$LogIncome[i]
+  y_i_guesses <- seq((y_i - 2.5), (y_i + 2.5), 0.5)
+  X_i <- CEdata_syn[, c("LogExpenditure", paste0("Race_", 2:6), "UrbanRural")]%>%
+    cbind(1, .)%>%
+    .[i,]
+  G <- length(y_i_guesses)
+  
+  beta_draws <- posterior_df[1:H, grepl("Beta", colnames(posterior_df))]%>%
+    as.matrix()
+  sigma_draws <- posterior_df[1:H, "sigma"]
+  
+  
+  
+  
+  CU_i_logZ_all <- rep(NA, G)
+  for (g in 1:G){
+    q_sum_H <- sum((dnorm(y_i_guesses[g], 
+                          mean = (beta_draws%*%t(X_i)), 
+                          sd = sigma_draws)) / 
+                     (dnorm(y_i, mean = (beta_draws%*%t(X_i)), 
+                            sd = sigma_draws)))
+    log_pq_h_all <- rep(NA, H)
+    for (h in 1:H){
+      log_p_h <- sum(log(dnorm(CEdata_syn$LogIncome, 
+                               mean = (beta_draws[h,]%*%t(X_i)), 
+                               sd = sigma_draws[h])))
+      log_q_h <- log(((dnorm(y_i_guesses[g], 
+                             mean = (beta_draws[h,]%*%t(X_i)), 
+                             sd = sigma_draws[h])) / 
+                        (dnorm(y_i, mean = (beta_draws[h,]%*%t(X_i)), 
+                               sd = sigma_draws[h]))) / q_sum_H)
+      log_pq_h_all[h] <- log_p_h + log_q_h
+    }
+    CU_i_logZ_all[g] <- compute_logsumexp(log_pq_h_all)
+  }
+  
+  
+  prob <- exp(CU_i_logZ_all - max(CU_i_logZ_all)) / 
+    sum(exp(CU_i_logZ_all - max(CU_i_logZ_all)))
+  outcome <- as.data.frame(cbind(y_i_guesses, prob))
+  names(outcome) <- c("guess", "probability")
+  result = outcome[order(outcome$probability, decreasing = TRUE), ]
+  
+  rank = which(result$guess == y_i)
+  probability = result$probability[rank]
+  
+  return(c(rank, probability))
+}
+```
+
+
+## Main
+Note that samples are in `posterior_df`, in the rebuild JAGs section above. 
+```{r}
+synthesis = syn_logInc_helper(CEdata, posterior_df, S = 25)
+
+CEdata_org = CEdata; CEdata_syn = CEdata
+CEdata_syn$logIncome = synthesis; CEdata_syn$Income = exp(synthesis)
+
+
+
+CEdata_org$LogIncome <- round(log(CEdata_org$Income), 
+                              digits = 1)
+CEdata_org$LogExpenditure <- round(log(CEdata_org$Expenditure), 
+                                   digits = 1)
+CEdata_syn$LogIncome <- round(log(CEdata_syn$Income), 
+                              digits = 1)
+CEdata_syn$LogExpenditure <- round(log(CEdata_syn$Expenditure), 
+                                   digits = 1)
+
+rank_probs= lapply(1:nrow(CEdata_org), importance_sample)%>%
+  do.call("rbind", .)
+
+
+rank_prob_df = data.frame(rank_probs)%>%
+  `colnames<-`(c("Rank", "Probability"))%>%
+  mutate(i = row_number())
+```
+
+Above, we have importance sampled our ranks and probabilities. Now we briefly analyze them. First, we see that the ranks (remember we considered 12 guesses) were, for the most part, below 6. This is good, as it suggests that the "most obvious" guesses were not the true matches. 
+```{r}
+ggplot(rank_prob_df, aes(x = i, y = Rank))+geom_point() + geom_path()
+ggplot(rank_prob_df, aes(x = Rank))+geom_histogram()
+```
+
+Further, we see that probabilities generally hovered around 8 percent -- this seems like reasonably low odds for the intruder. 
+
+```{r}
+ggplot(rank_prob_df, aes(x = i, y = Probability))+geom_point() + geom_path()
+ggplot(rank_prob_df, aes(x = Probability))+geom_density()
+```
+
+There are two CU's that stand out here, near the very bottom of `CEdata`. Specifically, these back-to-back CU's both have ranks of 2 (as compared to the rest, which are generally at or above 6); it might be worth examining whether this is in any way anomalous.
+
+Here are the rows:
+```{r}
+rank_prob_df%>%
+  arrange(Rank)%>%
+  head(5)
+```
+
+And here is what is contained in them:
+```{r}
+CEdata_org[rank_prob_df%>%
+             filter(Rank <= 3)%>%
+             pull(i), ]
+```
+
+The scarcity of Race 5's in this dataset seem to be the principal source of the vulnerability here. There are 6 total Race 5's in the dataset; as such, these two synthetic entries are already vulnerable. 
+
+```{r}
+CEdata_org%>%
+  filter(Race == 5)
+
+CEdata_syn%>%
+  filter(Race == 5)
+```
+
