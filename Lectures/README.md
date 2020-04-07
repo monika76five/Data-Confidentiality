@@ -11,5 +11,7 @@
     6. Methods for Utility Evaluation 2
     7. Methods for Risk Evaluation 1
     8. Methods for Risk Evaluation 2
+    9. Methods for Risk Evaluation 3
+    10. 
 
 - There is a LectureStyle.tex file for all lectures.
