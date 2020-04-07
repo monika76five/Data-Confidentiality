@@ -181,7 +181,7 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm; use this Zoom 
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
 
 
-## Overview of Differential Privacy \#1, Tuesday 4/7/2020
+## Methods for Disclosure Risks Evaluation \#3 (extra), Tuesday 4/7/2020
 
 ### To-do (done before class on 4/7)
 
@@ -193,5 +193,16 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm; use this Zoom 
 2. <ins>Read ```DP - Intro, Definitions and Laplace Mechanism.pdf``` in the References folder. <ins>
     
 3. <ins>**Prepare 3-5 slides about your synthesis model(s) for your project, and prepare to present to the class. Include any utility and / or risks results if you have any.**<ins>
+    
+**Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
+
+
+## Overview of Differential Privacy \#1, Tuesday 4/14/2020
+
+### To-do (done before class on 4/14)
+
+1. <ins>Read ```DP - Intro, Definitions and Laplace Mechanism.pdf``` in the References folder. <ins>
+    
+2. <ins>**Prepare 3-5 slides about your synthesis model(s) for your project, and prepare to present to the class. Include any utility and / or risks results if you have any.**<ins>
     
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
