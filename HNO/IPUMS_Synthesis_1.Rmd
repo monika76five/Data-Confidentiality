@@ -1,0 +1,766 @@
+---
+title: "IPUMS Health Data"
+author: "Henrik Olsson"
+date: "April 6, 2020"
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    df_print: paged
+subtitle: MATH 301 Data Confidentiality
+---
+```{r include=FALSE}
+library(readr)
+library(LearnBayes)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(runjags)
+library(coda)
+library(imputeTS)
+library(fastDummies)
+library(tinytex)
+```
+
+```{r}
+## read data
+data <- read.csv("nhis_00001.csv")
+## REMOVE THIS LATER. ONLY TAKING 1000 SAMPLES B/C JAGS TOOK TOO LONG
+data <- sample_n(data, 2000, replace = FALSE, prob = NULL)
+#save(data,file="tp.RData")
+#load("tp.RData")
+```
+
+Our goal is to generate synthetic data from the estimated Bayesian synthesizer from the posterior predictive distribution. To produce a good synthesizer, there will be trade-offs between utility and risks. 
+
+```{r include=FALSE}
+##Remove missing observations 
+# packge won't install for me
+na.remove(data$AGE)
+na.remove(data$SEX)
+na.remove(data$RACEA)
+na.remove(data$EDUCREC2)
+na.remove(data$HOURSWRK)
+na.remove(data$EARNIMPOINT1)
+na.remove(data$HINOTCOVE)
+na.remove(data$HRSLEEP)
+na.remove(data$WORFREQ)
+```
+
+```{r}
+## Remove all NIU (00) values
+data <- data[!data$EDUCREC2 == 00, ]
+data <- data[!data$HOURSWRK == 00, ]
+data <- data[!data$HINOTCOVE == 0, ]
+data <- data[!data$HRSLEEP == 00, ]
+data <- data[!data$WORFREQ == 0, ]
+```
+
+```{r include=FALSE}
+## Remove all 96 (900), 97 (970), 98 (980), 99s (990)
+data <- data[!data$RACEA == 900, ]
+data <- data[!data$RACEA == 970, ]
+data <- data[!data$RACEA == 980, ]
+data <- data[!data$RACEA == 990, ]
+data <- data[!data$EDUCREC2 == 96, ]
+data <- data[!data$EDUCREC2 == 97, ]
+data <- data[!data$EDUCREC2 == 98, ]
+data <- data[!data$EDUCREC2 == 99, ]
+data <- data[!data$HOURSWRK == 97, ]
+data <- data[!data$HOURSWRK == 98, ]
+data <- data[!data$HOURSWRK == 99, ]
+data <- data[!data$HINOTCOVE == 7, ]
+data <- data[!data$HINOTCOVE == 8, ]
+data <- data[!data$HINOTCOVE == 9, ]
+data <- data[!data$HRSLEEP == 97, ]
+data <- data[!data$HRSLEEP == 98, ]
+data <- data[!data$HRSLEEP == 99, ]
+data <- data[!data$WORFREQ == 7, ]
+data <- data[!data$WORFREQ == 8, ]
+data <- data[!data$WORFREQ == 9, ]
+```
+
+```{r}
+## Create new column RACE and recode into 6 categories
+## 1 = White, 2 = Black, 3 = American Indian, 4 = Asian, 
+## 5 = Other races, 6 = Two or more races
+data <- data %>% mutate(RACE = ifelse(RACEA %in% 100, 1, ifelse(RACEA %in% 200, 2, ifelse(RACEA %in% c(300,310,320,330,340), 3, ifelse(RACEA %in% c(400,410,411,412,413,414,415,416,420,421,422,423,430,431,432,433,434), 4,  ifelse(RACEA %in% c(500,510,520,530,540,550,560,570,580,600,610,611,612,613,614,615,616,617), 5, 0))))))
+## Create new column EDUC and recode into 3 categories
+## 1 = 4 years of high school or less, 2 = 4 years of college,
+## 3 = 5+ years of college
+data <- data %>% mutate(EDUC = ifelse(EDUCREC2 %in% c(10,20,30,31,32,40,41,42), 1, ifelse(EDUCREC2 %in% c(50,51,52,53,54), 2, ifelse(EDUCREC2 %in% 60, 3, 0))))
+data <- data %>% mutate(INCOME = ifelse(EARNIMPOINT1 %in% 0, 0, 1))
+```
+
+```{r}
+head(data)
+summary(data)
+```
+
+
+```{r include=FALSE}
+## create indicator variable for sex
+data$SEX = fastDummies::dummy_cols(data$SEX)
+## create indicator variables for race
+data$RACE = fastDummies::dummy_cols(data$RACE)
+## create indicator variables for education
+data$EDUC = fastDummies::dummy_cols(data$EDUC)
+## create indicator variables for healthcare coverage
+data$HEALTH = fastDummies::dummy_cols(data$HINOTCOVE)
+## create indicator variables for how often feel worried, nervous, or anxious
+data$WORRY = fastDummies::dummy_cols(data$WORFREQ)
+```
+
+## Part 1: Synthetic Logistic Regression Model (syn income into 0 or non-zero)
+
+```{r}
+## JAGS script
+modelString_part1 <-"
+model {
+## sampling
+for(i in 1:N){
+y[i] ~ dbern(p[i])
+logit(p[i]) <- beta0 + beta1*x_age[i] +
+beta2*x_sex_male[i] + beta3*x_sex_female[i] +
+beta4*x_race_w[i] + beta5*x_race_b[i] +
+beta6*x_race_i[i] + beta7*x_race_a[i] +
+beta8*x_race_o[i] +
+beta10*x_educ_1[i] + beta11*x_educ_2[i] +
+beta12*x_educ_3[i] + beta13*x_hourswrk[i] +
+beta14*x_health_cov[i] + beta15*x_health_nocov[i] +
+beta16*x_hrsleep[i] + beta17*x_wor_daily[i] +
+beta18*x_wor_weekly[i] + beta19*x_wor_monthly[i] +
+beta20*x_wor_fewtimes[i] + beta21*x_wor_never[i]
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+beta7 ~ dnorm(mu7, g7)
+beta8 ~ dnorm(mu8, g8)
+beta10 ~ dnorm(mu10, g10)
+beta11 ~ dnorm(mu11, g11)
+beta12 ~ dnorm(mu12, g12)
+beta13 ~ dnorm(mu13, g13)
+beta14 ~ dnorm(mu14, g14)
+beta15 ~ dnorm(mu15, g15)
+beta16 ~ dnorm(mu16, g16)
+beta17 ~ dnorm(mu17, g17)
+beta18 ~ dnorm(mu18, g18)
+beta19 ~ dnorm(mu19, g19)
+beta20 ~ dnorm(mu20, g20)
+beta21 ~ dnorm(mu21, g21)
+}"
+```
+
+
+```{r}
+y = as.vector(data$INCOME)
+x_age = as.vector(data$AGE) ## age
+x_sex_male = as.vector(data$SEX$.data_1) ## male
+x_sex_female = as.vector(data$SEX$.data_2) ## female
+x_race_w = as.vector(data$RACE$.data_1) ## white
+x_race_b = as.vector(data$RACE$.data_2) ## black/african-american
+x_race_i = as.vector(data$RACE$.data_3) ## american indian
+x_race_a = as.vector(data$RACE$.data_4) ## asian
+x_race_o = as.vector(data$RACE$.data_5) ## other races
+x_educ_1 = as.vector(data$EDUC$.data_3) ## 4 years of high school or less
+x_educ_2 = as.vector(data$EDUC$.data_1) ## 4 years of college
+x_educ_3 = as.vector(data$EDUC$.data_2) ## 5+ years of college
+x_hourswrk = as.vector(data$HOURSWRK) ## hours of work
+x_health_cov = as.vector(data$HEALTH$.data_1) ## has health coverage
+x_health_nocov = as.vector(data$HEALTH$.data_2) ## has no health coverage
+x_hrsleep = as.vector(data$HRSLEEP) ## hours of sleep
+x_wor_daily = as.vector(data$WORRY$.data_2) ## worry daily
+x_wor_weekly = as.vector(data$WORRY$.data_5) ## worry weekly
+x_wor_monthly = as.vector(data$WORRY$.data_4) ## worry monthly
+x_wor_fewtimes = as.vector(data$WORRY$.data_3) ## worry few times a year
+x_wor_never = as.vector(data$WORRY$.data_1) ## worry never
+N = length(y) # Compute the number of observations
+```
+
+```{r}
+## Pass the data and hyperparameter values to JAGS
+the_data_part1 <- list("y" = y,
+"x_age" = x_age, "x_sex_male" = x_sex_male,
+"x_sex_female" = x_sex_female, "x_race_w" = x_race_w,
+"x_race_b" = x_race_b, "x_race_i" = x_race_i,
+"x_race_a" = x_race_a, "x_race_o" = x_race_o,
+"x_educ_1" = x_educ_1,
+"x_educ_2" = x_educ_2, "x_educ_3" = x_educ_3,
+"x_hourswrk" = x_hourswrk, "x_health_cov" = x_health_cov,
+"x_health_nocov" = x_health_nocov, "x_hrsleep" = x_hrsleep,
+"x_wor_daily" = x_wor_daily, "x_wor_weekly" = x_wor_weekly,
+"x_wor_monthly" = x_wor_monthly, "x_wor_fewtimes" = x_wor_fewtimes,
+"x_wor_never" = x_wor_never, 
+"N" = N,
+"mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+"mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+"mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+"mu6" = 0, "g6" = 1, "mu7" = 0, "g7" = 1,
+"mu8" = 0, "g8" = 1, 
+"mu10" = 0, "g10" = 1, "mu11" = 0, "g11" = 1,
+"mu12" = 0, "g12" = 1, "mu13" = 0, "g13" = 1,
+"mu14" = 0, "g14" = 1, "mu15" = 0, "g15" = 1,
+"mu16" = 0, "g16" = 1, "mu17" = 0, "g17" = 1,
+"mu18" = 0, "g18" = 1, "mu19" = 0, "g19" = 1,
+"mu20" = 0, "g20" = 1, "mu21" = 0, "g21" = 1)
+```
+
+```{r}
+initsfunction <- function(chain){
+.RNG.seed <- c(1,2)[chain]
+.RNG.name <- c("base::Super-Duper",
+"base::Wichmann-Hill")[chain]
+return(list(.RNG.seed=.RNG.seed,
+.RNG.name=.RNG.name))
+}
+## Run the JAGS code for this model:
+posterior_MLR <- run.jags(modelString_part1,
+n.chains = 1,
+data = the_data_part1,
+monitor = c("beta0", "beta1", "beta2",
+"beta3", "beta4", "beta5",
+"beta6", "beta7", "beta8", "beta10",
+"beta11", "beta12", "beta13", "beta14", "beta15", "beta16", "beta17",
+"beta18", "beta19", "beta20", "beta21"),
+adapt = 1000,
+burnin = 5000,
+sample = 5000,
+thin = 1,
+inits = initsfunction)
+## JAGS output 
+summary(posterior_MLR)
+```
+
+```{r}
+plot(posterior_MLR, vars = "beta1")
+```
+
+```{r}
+## Saving posterior parameter draws
+post <- as.mcmc(posterior_MLR)
+```
+
+```{r}
+## Generating one set of sythetic data
+synthesize_catIncome <- function(X, index, n){
+  synthetic_Y <- c()
+  for(i in 1:n){
+     p <- plogis(post[index, "beta0"] +  X$x_age[i] * post[index, "beta1"] +  X$x_sex_male[i] * post[index, "beta2"] +  X$x_sex_female[i] * post[index, "beta3"] +  X$x_race_w[i] * post[index, "beta4"] +  X$x_race_b[i] * post[index, "beta5"] +  X$x_race_i[i] * post[index, "beta6"] +  X$x_race_a[i] * post[index, "beta7"] +  X$x_race_o[i] * post[index, "beta8"] +  X$x_educ_1[i] * post[index, "beta10"] +  X$x_educ_2[i] * post[index, "beta11"] +  X$x_educ_3[i] * post[index, "beta12"] +  X$x_hourswrk[i] * post[index, "beta13"] +  X$x_health_cov[i] * post[index, "beta14"] +  X$x_health_nocov[i] * post[index, "beta15"] +  X$x_hrsleep[i] * post[index, "beta16"] +  X$x_wor_daily[i] * post[index, "beta17"] +  X$x_wor_weekly[i] * post[index, "beta18"] +  X$x_wor_monthly[i] * post[index, "beta19"] +  X$x_wor_fewtimes[i] * post[index, "beta20"] +  X$x_wor_never[i] * post[index, "beta21"])
+     synthetic_Y[i] <- rbinom(1,1,p)
+  }
+  data.frame(X$y, synthetic_Y)
+}
+n <- dim(data)[1]
+params <- data.frame(y, x_age, x_sex_male, x_sex_female, x_race_w, x_race_b, x_race_i, x_race_a, x_race_o, x_educ_1, x_educ_2, x_educ_3, x_hourswrk, x_health_cov, x_health_nocov, x_hrsleep, x_wor_daily, x_wor_weekly, x_wor_monthly, x_wor_fewtimes, x_wor_never)
+synthetic_part1 <- synthesize_catIncome(params, 1, n)
+names(synthetic_part1) <- c("CatIncome", "CatIncomeSyn")
+```
+
+```{r}
+hist(synthetic_part1$CatIncome)
+hist(synthetic_part1$CatIncomeSyn)
+```
+
+## Utility Evaluation 
+
+### Analysis-specific measures
+
+#### Synthetic IPUMS sample: step 1
+
+```{r message=FALSE, size = "footnotesize"}
+n <- dim(data)[1]
+m <- 20
+synthetic_m <- vector("list",m)
+for(i in 1:m){
+  set.seed(123)
+  seed <- round(runif(1, 1, 1000))
+  synthetic_part1 <- synthesize_catIncome(params, 3000 + i, n)
+  names(synthetic_part1) <- c("CatIncome", "CatIncomeSyn")
+  synthetic_m[[i]] <- synthetic_part1
+}
+q <- rep(NA, m)
+v <- rep(NA, m)
+for (i in 1:m){
+  synthetic_part1 <- synthetic_m[[i]]
+  q[i] <- mean(synthetic_part1$CatIncomeSyn)
+  v[i] <- var(synthetic_part1$CatIncomeSyn)/n
+}
+```
+
+#### Synthetic IPUMS sample: step 2
+
+```{r message=FALSE, size = "footnotesize"}
+set.seed(123)
+q_bar_m <- mean(q)
+b_m <- var(q)
+v_bar_m <- mean(v)
+```
+
+#### Synthetic IPUMS sample: step 3
+
+```{r message=FALSE, size = "footnotesize"}
+set.seed(123)
+T_p <- b_m / m + v_bar_m
+v_p <- (m - 1) * (1 + v_bar_m / (b_m / m))^2
+```
+
+#### Synthetic CE sample: step 4
+
+- Obtain the point estimate for mean estimand $Q$, and the 95\% confidence interval
+
+```{r message=FALSE, size = "footnotesize"}
+set.seed(123)
+q_bar_m
+t_score_syn <- qt(p = 0.975, df = v_p)
+c(q_bar_m - t_score_syn * sqrt(T_p), q_bar_m + t_score_syn * sqrt(T_p))
+```
+Synthetic mean estimand: `r q_bar_m`
+Synthetic 95% CI: `r c(q_bar_m - t_score_syn * sqrt(T_p), q_bar_m + t_score_syn * sqrt(T_p))`
+
+#### Synthetic CE sample: step 4-extra
+
+```{r}
+## Obtain the point estimate for mean estimand Q, and the 95% 
+## confidence internval from the original data
+set.seed(123)
+mean_org <- mean(synthetic_part1$CatIncome)
+sd_org <- sd(synthetic_part1$CatIncome)
+t_score_org <- qt(p = 0.975, df = n-1)
+mean_org
+```
+
+Original mean estimand: `r mean_org`
+
+```{r}
+set.seed(123)
+c(mean_org - t_score_org * sd_org / sqrt(n), mean_org + t_score_org * sd_org / sqrt(n))
+```
+
+Synthetic 95% CI: `r c(mean_org - t_score_org * sd_org / sqrt(n), mean_org + t_score_org * sd_org / sqrt(n))`
+
+#### Interval overlap utility measure
+
+Combining rules provide point estimate and confidence interval estimates. We can also obtain point estimate and confidence interval estimate from the original, confidential data.
+
+```{r}
+## Need to find code to use instead of values
+L_s = 0.9324523
+U_s = 0.9750220
+L_o = 0.9325870
+U_o = 0.9746295
+L_i = 0.9325870
+U_i = 0.9746295
+I = (U_i - L_i) / (2 * (U_o - L_o)) + (U_i - L_i)/ (2 * (U_s - L_s))
+I
+```
+
+1) Take all rows where income was syn to 1 above
+2) Take all rows where income was orig non-zero
+3) Log 2), use it in JAGS
+4) Use model from 3) to syn all rows in 1)
+5) Combine and evaluate data
+
+## Identification Risk Evaluation 
+
+First, we look into identification disclosure through expected match risk, true match rate, and false match rate. Then attribute disclosure will be examined. 
+
+Higher expected match risk, higher true match rate, and lower false match rate indicate higher identification disclosure risk for the sample. Since we are doing a two-part synthesis model, we could potentially calculate three summaries on each synthetic dataset, and take the average. 
+
+#### Step 1: calculate key quantities
+
+```{r}
+## Remove unwanted columns
+data$RACEA <- NULL
+data$EDUCREC2 <- NULL
+data$POORYN <- NULL
+data$EARNIMP1 <- NULL
+data$EARNIMPOINT1 <- NULL
+data$USUALPL <- NULL
+data$DELAYCOST <- NULL
+data$HINOTCOVE <- NULL
+data$ALCDAYSWK <- NULL
+data$CIGDAYMO <- NULL
+data$DEPFREQ <- NULL
+data$WORFREQ <- NULL
+data$INCOME <- NULL
+
+## Bind CatIncome to original data
+IPUMSdata_org <- cbind(data, synthetic_part1$CatIncome)
+## Bind CatIncomeSyn to synthetic data
+IPUMSdata_syn <- cbind(data, synthetic_part1$CatIncomeSyn)
+
+## Rename CatIncome and CatIncomeSyn
+colnames(IPUMSdata_org)[colnames(IPUMSdata_org) == "synthetic_part1$CatIncome"] <- "income"
+colnames(IPUMSdata_syn)[colnames(IPUMSdata_syn) == "synthetic_part1$CatIncomeSyn"] <- "income"
+IPUMSdata_org <- as.data.frame(IPUMSdata_org)
+IPUMSdata_syn <- list(as.data.frame(IPUMSdata_syn))
+```
+
+
+```{r}
+IdentificationRisk <- function(origdata, syndata, known.vars, syn.vars, m, n){
+  origdata <- origdata
+  syndata <- syndata
+  m <- m 
+  n <- n  
+  c_vector <- matrix(rep(NA, n*m), ncol = m)
+  T_vector <- matrix(rep(NA, n*m), ncol = m)
+  for (i in 1:n){
+    for (k in 1:m){
+      syndata_k <- syndata[[k]]
+      match_k <- (eval(parse(text=paste("origdata$",syn.vars,"[i]==
+                                      syndata_k$",syn.vars,sep="",collapse="&")))&
+                  eval(parse(text=paste("origdata$",known.vars,"[i]==
+                                        syndata_k$",known.vars,sep="",collapse="&"))))
+      match.prob_k <- ifelse(match_k,1/sum(match_k),0)
+      if (max(match.prob_k) > 0){
+        c_vector[i, k] <- length(match.prob_k[match.prob_k == max(match.prob_k)])
+      }
+      else
+        c_vector[i, k] <- 0
+      T_vector[i, k] <- is.element(i,rownames(origdata)[match.prob_k==max(match.prob_k)])
+    }
+  }
+  K_vector = matrix(rep(0, n*m), ncol = m)
+  F_vector = matrix(rep(0, n*m), ncol = m)
+  for (k in 1:m){
+    K_vector[, k] = (c_vector[, k]*T_vector[, k]==1)
+    F_vector[, k] = (c_vector[, k]*(1 - T_vector[, k])==1)
+  }
+  s_vector <- rep(NA, m)
+  exp_match_risk_vector <- rep(NA, m)
+  true_match_rate_vector <- rep(NA, m)
+  false_match_rate_vector <- rep(NA, m)
+  for (k in 1:m){
+    s_vector[k] <- length(c_vector[c_vector[, k]==1&is.na(c_vector[, k])==FALSE, k])
+    nonzero_c_index = which(c_vector[, k]>0)
+    exp_match_risk_vector[k] <- sum(1/c_vector[nonzero_c_index, k]*T_vector[nonzero_c_index, k])
+    true_match_rate_vector[k] <- sum(na.omit(K_vector[, k]))/n
+    false_match_rate_vector[k] <- sum(na.omit(F_vector[, k]))/s_vector[k]
+  }
+  res_r <- list(s_vector = s_vector,
+                exp_match_risk_vector = exp_match_risk_vector,
+                true_match_rate_vector = true_match_rate_vector,
+                false_match_rate_vector = false_match_rate_vector,
+                c_vector = c_vector,
+                T_vector = T_vector,
+                K_vector = K_vector,
+                F_vector = F_vector
+  )
+  return(res_r)
+}
+```
+
+## Step 1: calculate key quantities cont'd 
+
+```{r}
+ known.vars <- c("SEX$.data_2", "SEX$.data_1", "RACE$.data_2", "RACE$.data_1","RACE$.data_5","RACE$.data_4", "RACE$.data_3","AGE", "EDUC$.data_3", "EDUC$.data_1", "EDUC$.data_2","HOURSWRK", "HEALTH$.data_1","HEALTH$.data_2","HRSLEEP",
+"WORRY$.data_3", "WORRY$.data_5", "WORRY$.data_4", "WORRY$.data_1", "WORRY$.data_2")
+ syn.vars <- c("income")
+ n <- dim(IPUMSdata_org)[1]
+ m <- 1
+output <- IdentificationRisk(IPUMSdata_org, IPUMSdata_syn, 
+                             known.vars, syn.vars, m, n) 
+```
+ 
+```{r}
+mean(output[["exp_match_risk_vector"]])
+mean(output[["true_match_rate_vector"]])
+mean(output[["false_match_rate_vector"]])
+```
+
+## Part 2: Synthetic Linear Regression Model (syn income given all non-zero entries from part 1)
+
+```{r}
+## JAGS script
+modelString_part2 <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dnorm(beta0 + beta1*x_age[i] +
+beta2*x_sex_male[i] + beta3*x_sex_female[i] +
+beta4*x_race_w[i] + beta5*x_race_b[i] +
+beta6*x_race_i[i] + beta7*x_race_a[i] +
+beta8*x_race_o[i] +
+beta10*x_educ_1[i] + beta11*x_educ_2[i] +
+beta12*x_educ_3[i] + beta13*x_hourswrk[i] +
+beta14*x_health_cov[i] + beta15*x_health_nocov[i] +
+beta16*x_hrsleep[i] + beta17*x_wor_daily[i] +
+beta18*x_wor_weekly[i] + beta19*x_wor_monthly[i] +
+beta20*x_wor_fewtimes[i] + beta21*x_wor_never[i], invsigma2)
+}
+## priors
+beta0 ~ dnorm(mu0, g0)
+beta1 ~ dnorm(mu1, g1)
+beta2 ~ dnorm(mu2, g2)
+beta3 ~ dnorm(mu3, g3)
+beta4 ~ dnorm(mu4, g4)
+beta5 ~ dnorm(mu5, g5)
+beta6 ~ dnorm(mu6, g6)
+beta7 ~ dnorm(mu7, g7)
+beta8 ~ dnorm(mu8, g8)
+beta10 ~ dnorm(mu10, g10)
+beta11 ~ dnorm(mu11, g11)
+beta12 ~ dnorm(mu12, g12)
+beta13 ~ dnorm(mu13, g13)
+beta14 ~ dnorm(mu14, g14)
+beta15 ~ dnorm(mu15, g15)
+beta16 ~ dnorm(mu16, g16)
+beta17 ~ dnorm(mu17, g17)
+beta18 ~ dnorm(mu18, g18)
+beta19 ~ dnorm(mu19, g19)
+beta20 ~ dnorm(mu20, g20)
+beta21 ~ dnorm(mu21, g21)
+invsigma2 ~ dgamma(a, b)
+sigma <- sqrt(pow(invsigma2, -1))
+}"
+```
+
+```{r}
+dataNoZeros = as.data.frame(data[!data$EARNIMPOINT1 == 0,])
+y = log(dataNoZeros$EARNIMPOINT1)
+x_age = as.vector(dataNoZeros$AGE) ## age
+x_sex_male = as.vector(dataNoZeros$SEX$.data_1) ## male
+x_sex_female = as.vector(dataNoZeros$SEX$.data_2) ## female
+x_race_w = as.vector(dataNoZeros$RACE$.data_1) ## white
+x_race_b = as.vector(dataNoZeros$RACE$.data_2) ## black/african-american
+x_race_i = as.vector(dataNoZeros$RACE$.data_3) ## american indian
+x_race_a = as.vector(dataNoZeros$RACE$.data_4) ## asian
+x_race_o = as.vector(dataNoZeros$RACE$.data_5) ## other races
+x_educ_1 = as.vector(dataNoZeros$EDUC$.data_3) ## 4 years of high school or less
+x_educ_2 = as.vector(dataNoZeros$EDUC$.data_1) ## 4 years of college
+x_educ_3 = as.vector(dataNoZeros$EDUC$.data_2) ## 5+ years of college
+x_hourswrk = as.vector(dataNoZeros$HOURSWRK) ## hours of work
+x_health_cov = as.vector(dataNoZeros$HEALTH$.data_1) ## has health coverage
+x_health_nocov = as.vector(dataNoZeros$HEALTH$.data_2) ## has no health coverage
+x_hrsleep = as.vector(dataNoZeros$HRSLEEP) ## hours of sleep
+x_wor_daily = as.vector(dataNoZeros$WORRY$.data_2) ## worry daily
+x_wor_weekly = as.vector(dataNoZeros$WORRY$.data_5) ## worry weekly
+x_wor_monthly = as.vector(dataNoZeros$WORRY$.data_4) ## worry monthly
+x_wor_fewtimes = as.vector(dataNoZeros$WORRY$.data_3) ## worry few times a year
+x_wor_never = as.vector(dataNoZeros$WORRY$.data_1) ## worry never
+N = length(y) # Compute the number of observations
+## Pass the data and hyperparameter values to JAGS
+the_data_part2 <- list("y" = y,
+"x_age" = x_age, "x_sex_male" = x_sex_male,
+"x_sex_female" = x_sex_female, "x_race_w" = x_race_w,
+"x_race_b" = x_race_b, "x_race_i" = x_race_i,
+"x_race_a" = x_race_a, "x_race_o" = x_race_o,
+"x_educ_1" = x_educ_1,
+"x_educ_2" = x_educ_2, "x_educ_3" = x_educ_3,
+"x_hourswrk" = x_hourswrk, "x_health_cov" = x_health_cov,
+"x_health_nocov" = x_health_nocov, "x_hrsleep" = x_hrsleep,
+"x_wor_daily" = x_wor_daily, "x_wor_weekly" = x_wor_weekly,
+"x_wor_monthly" = x_wor_monthly, "x_wor_fewtimes" = x_wor_fewtimes,
+"x_wor_never" = x_wor_never, 
+"N" = N,
+"mu0" = 0, "g0" = 1, "mu1" = 0, "g1" = 1,
+"mu2" = 0, "g2" = 1, "mu3" = 0, "g3" = 1,
+"mu4" = 0, "g4" = 1, "mu5" = 0, "g5" = 1,
+"mu6" = 0, "g6" = 1, "mu7" = 0, "g7" = 1,
+"mu8" = 0, "g8" = 1,
+"mu10" = 0, "g10" = 1, "mu11" = 0, "g11" = 1,
+"mu12" = 0, "g12" = 1, "mu13" = 0, "g13" = 1,
+"mu14" = 0, "g14" = 1, "mu15" = 0, "g15" = 1,
+"mu16" = 0, "g16" = 1, "mu17" = 0, "g17" = 1,
+"mu18" = 0, "g18" = 1, "mu19" = 0, "g19" = 1,
+"mu20" = 0, "g20" = 1, "mu21" = 0, "g21" = 1,
+"a" = 1, "b" = 1)
+```
+
+````{r}
+## Run the JAGS code for this model:
+initsfunction <- function(chain){
+.RNG.seed <- c(1,2)[chain]
+.RNG.name <- c("base::Super-Duper",
+"base::Wichmann-Hill")[chain]
+return(list(.RNG.seed=.RNG.seed,
+.RNG.name=.RNG.name))
+}
+posterior_MLR <- run.jags(modelString_part2,
+n.chains = 1,
+data = the_data_part2,
+monitor = c("beta0", "beta1", "beta2",
+"beta3", "beta4", "beta5",
+"beta6", "beta7", "beta8", "beta10",
+"beta11", "beta12", "beta13", "beta14", "beta15", "beta16", "beta17",
+"beta18", "beta19", "beta20", "beta21", "sigma"),
+adapt = 1000,
+burnin = 5000,
+sample = 5000,
+thin = 20,
+inits = initsfunction)
+## JAGS output 
+summary(posterior_MLR)
+```
+```{r}
+plot(posterior_MLR, vars = "beta1")
+```
+```{r}
+## Saving posterior parameter draws
+post <- as.mcmc(posterior_MLR)
+```
+```{r}
+## Generating one set of sythetic data
+synthesize <- function(X, index, n){
+  mean_Y <- post[index, "beta0"] +  X$x_age * post[index, "beta1"] +  X$x_sex_male * post[index, "beta2"] +  X$x_sex_female * post[index, "beta3"] +  X$x_race_w * post[index, "beta4"] +  X$x_race_b * post[index, "beta5"] +  X$x_race_i * post[index, "beta6"] +  X$x_race_a * post[index, "beta7"] +  X$x_race_o * post[index, "beta8"] +  X$x_educ_1 * post[index, "beta10"] +  X$x_educ_2 * post[index, "beta11"] +  X$x_educ_3 * post[index, "beta12"] +  X$x_hourswrk * post[index, "beta13"] +  X$x_health_cov * post[index, "beta14"] +  X$x_health_nocov * post[index, "beta15"] +  X$x_hrsleep * post[index, "beta16"] +  X$x_wor_daily * post[index, "beta17"] +  X$x_wor_weekly * post[index, "beta18"] +  X$x_wor_monthly * post[index, "beta19"] +  X$x_wor_fewtimes * post[index, "beta20"] +  X$x_wor_never * post[index, "beta21"] 
+  synthetic_Y <- rnorm(n, mean_Y, post[index, "sigma"])
+  data.frame(data$EARNIMPOINT1, exp(synthetic_Y))
+}
+n <- dim(data)[1]
+params <- data.frame(y, x_age, x_sex_male, x_sex_female, x_race_w, x_race_b, x_race_i, x_race_a, x_race_o, x_educ_1, x_educ_2, x_educ_3, x_hourswrk, x_health_cov, x_health_nocov, x_hrsleep, x_wor_daily, x_wor_weekly, x_wor_monthly, x_wor_fewtimes, x_wor_never)
+synthetic_one <- synthesize(params, 1, n)
+names(synthetic_one) <- c("OrigIncome", "SynIncome")
+```
+```{r eval=FALSE, include=FALSE}
+for (i in 1:nrow(synthetic_one)){
+  if (synthetic_one$SynIncome[i] == 0) {
+    synthetic_one$SynIncome[i] = 0
+  }
+  if (synthetic_one$SynIncome[i] > 150000){
+    synthetic_one$SynIncome[i] = 150000
+  }
+}
+```
+```{r}
+ggplot(synthetic_one, aes(x = OrigIncome, y = SynIncome)) + 
+  geom_point(size = 1) + 
+  labs(title = "Scatter plot of Synthetic Income vs Original Income") +
+  theme_bw(base_size = 6, base_family = "") +
+  coord_cartesian(xlim = c(0, 155000)) + 
+  coord_cartesian(ylim = c(0, 155000))
+```
+
+## Identification Risk Evaluation 
+
+First, we look into identification disclosure through expected match risk, true match rate, and false match rate. Then attribute disclosure will be examined. 
+
+Higher expected match risk, higher true match rate, and lower false match rate indicate higher identification disclosure risk for the sample. Since we are doing a two-part synthesis model, we could potentially calculate three summaries on each synthetic dataset, and take the average. 
+
+#### Step 1: calculate key quantities
+
+```{r}
+## Remove unwanted columns
+data$RACEA <- NULL
+data$EDUCREC2 <- NULL
+data$POORYN <- NULL
+data$EARNIMP1 <- NULL
+data$EARNIMPOINT1 <- NULL
+data$USUALPL <- NULL
+data$DELAYCOST <- NULL
+data$HINOTCOVE <- NULL
+data$ALCDAYSWK <- NULL
+data$CIGDAYMO <- NULL
+data$DEPFREQ <- NULL
+data$WORFREQ <- NULL
+data$INCOME <- NULL
+
+## Bind CatIncome to original data
+data_org <- cbind(data, synthetic_one$OrigIncome)
+## Bind CatIncomeSyn to synthetic data
+data_syn <- cbind(data, synthetic_one$SynIncome)
+
+## Rename CatIncome and CatIncomeSyn
+colnames(data_org)[colnames(data_org) == "synthetic_one$OrigIncome"] <- "INCOME"
+colnames(data_syn)[colnames(data_syn) == "synthetic_one$SynIncome"] <- "INCOME"
+data_org <- as.data.frame(data_org)
+data_syn <- as.data.frame(data_syn)
+```
+
+
+```{r}
+CalculateKeyQuantities <- function(origdata, syndata, known.vars, syn.vars, n){
+  origdata <- origdata
+  syndata <- syndata
+  n <- n
+  c_vector <- rep(NA, n)
+  T_vector <- rep(NA, n)
+  for (i in 1:n){
+    match <- (eval(parse(text=paste("origdata$",syn.vars,"[i]==
+                                      syndata$",syn.vars,sep="",collapse="&")))&
+                  eval(parse(text=paste("origdata$",known.vars,"[i]==
+                                        syndata$",known.vars,sep="",collapse="&"))))
+    match.prob <- ifelse(match, 1/sum(match), 0)
+    
+    if (max(match.prob) > 0){
+      c_vector[i] <- length(match.prob[match.prob == max(match.prob)])
+    }
+    else
+      c_vector[i] <- 0
+      T_vector[i] <- is.element(i, rownames(origdata)[match.prob == max(match.prob)])
+  }
+    K_vector <- (c_vector * T_vector == 1)
+  F_vector <- (c_vector * (1 - T_vector) == 1)
+  s <- length(c_vector[c_vector == 1 & is.na(c_vector) == FALSE])
+  
+  res_r <- list(c_vector = c_vector,
+                T_vector = T_vector,
+                K_vector = K_vector,
+                F_vector = F_vector,
+                s = s
+  )
+  return(res_r)
+}
+
+```
+
+## Step 1: calculate key quantities cont'd 
+
+```{r}
+ known.vars <- c("SEX$.data_2", "SEX$.data_1", "RACE$.data_2", "RACE$.data_1","RACE$.data_5","RACE$.data_4", "RACE$.data_3","AGE", "EDUC$.data_3", "EDUC$.data_1", "EDUC$.data_2","HOURSWRK", "HEALTH$.data_1","HEALTH$.data_2","HRSLEEP",
+"WORRY$.data_3", "WORRY$.data_5", "WORRY$.data_4", "WORRY$.data_1", "WORRY$.data_2")
+ syn.vars <- c("INCOME")
+ n <- dim(data_org)[1]
+ KeyQuantities <- CalculateKeyQuantities(data_org, data_syn, 
+                                        known.vars, syn.vars, n)
+```
+
+## Step 2: calculate 3 summary measures
+
+```{r}
+ IdentificationRisk <- function(c_vector, T_vector, K_vector, F_vector, s, N){
+  
+  nonzero_c_index <- which(c_vector > 0)
+  exp_match_risk <- sum(1/c_vector[nonzero_c_index]*T_vector[nonzero_c_index])
+  true_match_rate <- sum(na.omit(K_vector))/N
+  false_match_rate <- sum(na.omit(F_vector))/s
+  res_r <- list(exp_match_risk = exp_match_risk,
+                true_match_rate = true_match_rate,
+                false_match_rate = false_match_rate
+  )
+  return(res_r)
+}
+```
+
+
+## Step 2: calculate 3 summary measures cont'd
+
+- each record is a target, therefore ```N = n```
+
+```{r}
+c_vector <- KeyQuantities[["c_vector"]]
+T_vector <- KeyQuantities[["T_vector"]]
+K_vector <- KeyQuantities[["K_vector"]]
+F_vector <- KeyQuantities[["F_vector"]]
+s <- KeyQuantities[["s"]]
+N <- n
+ThreeSummaries <- IdentificationRisk(c_vector, T_vector, K_vector, F_vector, s, N)
+```
+
+
+## Step 2: calculate 3 summary measures cont'd
+
+```{r}
+ThreeSummaries[["exp_match_risk"]]
+ThreeSummaries[["true_match_rate"]]
+ThreeSummaries[["false_match_rate"]]
+```
+
+
+
