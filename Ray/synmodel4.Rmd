@@ -172,7 +172,7 @@ for (i in 1:m){
 bm<- var(q)
 vbar<- mean(v)
 tp<- bm/m+vbar
-vp<- (m-1) * (1+vbar/(b_m/m))^2
+vp<- (m-1) * (1+vbar/(bm/m))^2
 tp
 vp
 qbar<- mean(q)
