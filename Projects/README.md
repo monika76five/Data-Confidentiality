@@ -24,7 +24,6 @@ A paper of no more than 20 pages reporting the results of your project that incl
 - The methods used to obtain and analyze the data
 - The results of the analysis (tables, charts, graphs, significance, confidence intervals, descriptive text)
 - A discussion of the research, the limitations of the current research, reasonableness of any assumptions made, possibilities of future work/studies that should be conducted, etc.
-- References should be listed at the end of the report and do not count against the 20 page limit.
 
 
 
