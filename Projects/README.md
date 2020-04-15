@@ -27,7 +27,8 @@ Tuesday 5/5: final presentation of your project & submission of write-up
 
 
 ### Project write-up instructions
-(following [USRESP guidelines](https://www.causeweb.org/usproc/usresp); the guidelines are generic, so please put them into our context, e.g. "the methods used to obtain and analyze the data" should include your synthesis models)
+1. the guidelines below are generic ([USRESP guidelines](https://www.causeweb.org/usproc/usresp)), so please put them into our context, e.g. "the methods used to obtain and analyze the data" should include your synthesis models
+2. check out the references under Applications in the References folder, where you will find sample manuscripts of synthetic data research projects, including the one we read about the SynLBD
 
 A paper of no more than 20 pages reporting the results of your project that includes the following:
 - Title and abstract
