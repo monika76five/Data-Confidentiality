@@ -20,14 +20,14 @@ Tuesday 4/21: presentation of project updates & write-up draft including the fol
 Tuesday 4/28: presentation of project updates & write-up draft including the following items:
     1. the research question(s)
     2. background/significance of the research
-    3. the methods used to obtain and analyze the data
+    3. the methods used to obtain and analyze the data 
     4. the results of the analysis (tables, charts, graphs, significance, confidence intervals, descriptive text)
     
 Tuesday 5/5: final presentation of your project & submission of write-up
 
 
 ### Project write-up instructions
-(following [USRESP guidelines](https://www.causeweb.org/usproc/usresp))
+(following [USRESP guidelines](https://www.causeweb.org/usproc/usresp); the guidelines are generic, so please put them into our context, e.g. "the methods used to obtain and analyze the data" should include your synthesis models)
 
 A paper of no more than 20 pages reporting the results of your project that includes the following:
 - Title and abstract
