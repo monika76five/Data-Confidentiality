@@ -24,7 +24,9 @@ library(tinytex)
 
 ```{r}
 ## read data
-#data <- read.csv("nhis_00001.csv")
+
+#data <- read.csv("fulldataset.csv")
+
 ## REMOVE THIS LATER. ONLY TAKING 1000 SAMPLES B/C JAGS TOOK TOO LONG
 #data <- sample_n(data, 2000, replace = FALSE, prob = NULL)
 ## log income
@@ -428,6 +430,7 @@ synthesize <- function(X, index, n){
 n <- dim(data)[1]
 params <- data.frame(y, x_age, x_sex_male, x_sex_female, x_race_w, x_race_b, x_race_i, x_race_a, x_race_o, x_educ_1, x_educ_2, x_educ_3, x_hourswrk, x_health_cov, x_health_nocov, x_hrsleep, x_wor_daily, x_wor_weekly, x_wor_monthly, x_wor_fewtimes, x_wor_never)
 synthetic_one <- synthesize(params, 1, n)
+
 names(synthetic_one) <- c("OrigIncome", "SynIncome")
 ```
 
@@ -452,54 +455,303 @@ ggplot(synthetic_one, aes(x = OrigIncome, y = SynIncome)) +
 
 
 ```
+```{r}
+## Remove unwanted columns
+data$RACEA <- NULL
+data$EDUCREC2 <- NULL
+data$POORYN <- NULL
+data$EARNIMP1 <- NULL
+data$EARNIMPOINT1 <- NULL
+data$USUALPL <- NULL
+data$DELAYCOST <- NULL
+data$HINOTCOVE <- NULL
+data$ALCDAYSWK <- NULL
+data$CIGDAYMO <- NULL
+data$DEPFREQ <- NULL
+data$WORFREQ <- NULL
+data$INCOME <- NULL
+
+# Expand dataframe columns
+data$SEX_1 <- data$SEX$.data_1
+data$SEX_2 <- data$SEX$.data_2
+data$SEX <- NULL
+
+data$RACE_1 <- data$RACE$.data_1
+data$RACE_2 <- data$RACE$.data_2
+data$RACE_3 <- data$RACE$.data_3
+data$RACE_4 <- data$RACE$.data_4
+data$RACE_5 <- data$RACE$.data_5
+data$RACE <- NULL
+
+data$EDUC_1 <- data$EDUC$.data_1
+data$EDUC_2 <- data$EDUC$.data_2
+data$EDUC_3 <- data$EDUC$.data_3
+data$EDUC <- NULL
+
+data$HEALTH_1 <- data$HEALTH$.data_1
+data$HEALTH_2 <- data$HEALTH$.data_2
+data$HEALTH <- NULL
+
+data$WORRY_1 = data$WORRY$.data_1
+data$WORRY_2 = data$WORRY$.data_2
+data$WORRY_3 = data$WORRY$.data_3
+data$WORRY_4 = data$WORRY$.data_4
+data$WORRY_5 = data$WORRY$.data_5
+data$WORRY <- NULL
+
+## Bind CatIncome to original data
+data_org <- cbind(data, synthetic_one$OrigIncome)
+## Bind CatIncomeSyn to synthetic data
+data_syn <- cbind(data, synthetic_one$SynIncome)
+
+## Rename CatIncome and CatIncomeSyn
+colnames(data_org)[colnames(data_org) == "synthetic_one$OrigIncome"] <- "INCOME"
+colnames(data_syn)[colnames(data_syn) == "synthetic_one$SynIncome"] <- "INCOME"
+colnames(data_org)
+colnames(data_syn)
+```
+TODO:
+
+Utility evaluation
+-global measures
+  1) propensity score (5)
+  2) cluster analysis (5)
+  3) emperical cdf (5)
+-analysis specific measures
+  4) mean, median, etc. (6)
+  5) syn data variability (multiple syn datasets generated) (6)
+  6) interval overlap (6)
+
+Risk evaluation
+-identification disclosure
+  7) expected match risk (7)
+  8) true match rate (7)
+  9) false match rate (7)
+-attribute risk disclosure
+  10) AR disclosure
 
 
-## Utility Evaluation 
+CatIncome (do ?):
+Currently working:
+Need to implement: 
 
-### Combining rules for partially synthetic data
+Final model (do all):
+Currently working: 1,2,3,4,5,6,7,8,9
+Need to implement: 10
 
-#### Synthetic IPUMS sample: step 1
 
-```{r message=FALSE, size = "footnotesize"}
-m = 1
-q <- rep(NA, m)
-v <- rep(NA, m)
-for (i in 1:m){
-  synthetic_one <- synthetic_one[[i]]
-  q[i] <- mean(synthetic_one$SynLogIncome)
-  v[i] <- var(synthetic_one$SynLogIncome)/n
-}
+# Utility evaluation - Global measures
+```{r}
+n <- dim(data_org)[1]
+merged_data <- rbind(data_org,data_syn)
+merged_data$S <- c(rep(0,n),rep(1,n))
+
+# Propensity score (note we can't really take the log because of zero income values)
+log_reg <- glm(S ~ AGE + HOURSWRK + HRSLEEP + SEX_1 + SEX_2 + RACE_1 + RACE_2 + RACE_3 + RACE_4 + RACE_5 + EDUC_1 + EDUC_2 + EDUC_3 + HEALTH_1 + HEALTH_2 + WORRY_1 + WORRY_2 + WORRY_3 + WORRY_4 + WORRY_5 + INCOME, family = "binomial", data = merged_data)
+pred <- predict(log_reg, data = merged_data)
+probs <- pred/(1+pred)
+Up <- 1/(2*n)*sum((probs - 1/2)^2)
+Up
+```
+```{r}
+# Cluster analysis
+clusters <- hclust(dist(merged_data[,1:21]), method = 'average')
+G <- 5
+clusterCut <-cutree(clusters,G)
+cluster_S <- as.data.frame(cbind(clusterCut, merged_data$S))
+names(cluster_S) <- c("cluster","S")
+table(cluster_S)
+```
+```{r}
+n_gS <- table(cluster_S)[,1]
+n_g <- rowSums(table(cluster_S))
+w_g <- n_g / (2*n)
+Uc <- (1/G) * sum(w_g * (n_gS/n_g - 1/2)^2)
+Uc
+```
+# Emperical CDF
+```{r}
+ecdf_orig <- ecdf(data_org$INCOME)
+ecdf_syn <- ecdf(data_syn$INCOME)
+
+percentile_orig <- ecdf_orig(merged_data$INCOME)
+percentile_syn <- ecdf_syn(merged_data$INCOME)
+
+ecdf_diff <- percentile_orig - percentile_syn
+Um <- max(abs(ecdf_diff))
+Um
+```
+```{r}
+Ua <- mean(ecdf_diff^2)
+Ua
 ```
 
-#### Synthetic IPUMS sample: step 2
+# Utility evaluation - Analysis specific measures: Mean and median
+```{r}
+mean(data_org$INCOME)
+mean(data_syn$INCOME)
+```
+```{r}
+median(data_org$INCOME)
+median(data_syn$INCOME)
+```
 
-```{r message=FALSE, size = "footnotesize"}
+# Utility evaluation - Analysis specific measures: Synthetic data variability
+```{r}
+synthesizeMany <- function(X, index, n){
+  mean_Y <- post[index, "beta0"] +  X$x_age * post[index, "beta1"] +  X$x_sex_male * post[index, "beta2"] +  X$x_sex_female * post[index, "beta3"] +  X$x_race_w * post[index, "beta4"] +  X$x_race_b * post[index, "beta5"] +  X$x_race_i * post[index, "beta6"] +  X$x_race_a * post[index, "beta7"] +  X$x_race_o * post[index, "beta8"] +  X$x_educ_1 * post[index, "beta10"] +  X$x_educ_2 * post[index, "beta11"] +  X$x_educ_3 * post[index, "beta12"] +  X$x_hourswrk * post[index, "beta13"] +  X$x_health_cov * post[index, "beta14"] +  X$x_health_nocov * post[index, "beta15"] +  X$x_hrsleep * post[index, "beta16"] +  X$x_wor_daily * post[index, "beta17"] +  X$x_wor_weekly * post[index, "beta18"] +  X$x_wor_monthly * post[index, "beta19"] +  X$x_wor_fewtimes * post[index, "beta20"] +  X$x_wor_never * post[index, "beta21"] 
+  synthetic_Y <- rnorm(n, mean_Y, post[index, "sigma"])
+  data.frame(exp(synthetic_Y))
+}
+n <- dim(data)[1]
+params <- data.frame(y, x_age, x_sex_male, x_sex_female, x_race_w, x_race_b, x_race_i, x_race_a, x_race_o, x_educ_1, x_educ_2, x_educ_3, x_hourswrk, x_health_cov, x_health_nocov, x_hrsleep, x_wor_daily, x_wor_weekly, x_wor_monthly, x_wor_fewtimes, x_wor_never)
+
+m <- 20
+synthetic_m <- vector("list",m)
+for(i in 1:m){
+  syn <- synthesizeMany(params,i,n)
+  names(syn) <- c("SynIncome")
+  for (k in 1:nrow(syn)){
+    if (synthetic_part1$CatIncomeSyn[i] == 0) {
+      syn$SynIncome[i] = 0
+    }
+    if (syn$SynIncome[i] > 150000){
+      syn$SynIncome[i] = 150000
+    }
+  }
+  synthetic_m[[i]] <- syn
+}
+
+q <- rep(NA,m)
+v <- rep(NA,m)
+for(i in 1:m){
+  syn <- synthetic_m[[i]]
+  q[i] <- mean(syn$SynIncome)
+  v[i] <- var(syn$SynIncome)/n
+}
 q_bar_m <- mean(q)
 b_m <- var(q)
 v_bar_m <- mean(v)
-```
 
-#### Synthetic IPUMS sample: step 3
-
-```{r message=FALSE, size = "footnotesize"}
 T_p <- b_m / m + v_bar_m
-v_p <- (m - 1) * (1 + v_bar_m / (b_m / m))^2
-```
+v_p <- (m-1) * (1 + v_bar_m / (b_m /m))^2
 
-#### Synthetic CE sample: step 4
-
-- Obtain the point estimate for mean estimand $Q$, and the 95\% confidence interval
-
-```{r message=FALSE, size = "footnotesize"}
 q_bar_m
+```
+```{r}
 t_score_syn <- qt(p = 0.975, df = v_p)
-c(q_bar_m - t_score_syn * sqrt(T_p), q_bar_m + t_score_syn * sqrt(T_p))
+interval_syn <- c(q_bar_m - t_score_syn * sqrt(T_p), q_bar_m + t_score_syn * sqrt(T_p))
+interval_syn
+```
+```{r}
+mean_org <- mean(data_org$INCOME)
+sd_org <- sd(data_org$INCOME)
+t_score_org <- qt(p = 0.975, df = n-1)
+mean_org
+```
+```{r}
+interval_orig <- c(mean_org - t_score_org * sd_org / sqrt(n),
+  mean_org + t_score_org * sd_org / sqrt(n))
+interval_orig
+```
+# Utility evaluation - Analysis specific measures: Interval overlap
+```{r}
+L_s <- interval_syn[1]
+U_s <- interval_syn[2]
+L_o <- interval_orig[1]
+U_o <- interval_orig[2]
+L_i <- max(L_s,L_o)
+U_i <- min(U_s,U_o)
+I <- (U_i - L_i) / (2 * (U_o - L_o)) + (U_i - L_i) / (2 * (U_s - L_s))
+I
 ```
 
-#### Synthetic CE sample: step 4-extra
 
-- Synthetic: [8.72, 8.83]
 
-### Propensity Score Measure
 
-to be continued...
+
+# Risk evaluation - Identification disclosure: Expected match risk, True match rate, False match rate
+```{r}
+CalculateKeyQuantities <- function(origdata, syndata, known.vars, syn.vars, n){
+  origdata <- origdata
+  syndata <- syndata
+  n <- n
+  c_vector <- rep(NA, n)
+  T_vector <- rep(NA, n)
+  for (i in 1:n){
+    match <- (eval(parse(text=paste("origdata$",syn.vars,"[i]==
+                                      syndata$",syn.vars,sep="",collapse="&")))&
+                  eval(parse(text=paste("origdata$",known.vars,"[i]==
+                                        syndata$",known.vars,sep="",collapse="&"))))
+    match.prob <- ifelse(match, 1/sum(match), 0)
+   
+    if (max(match.prob) > 0){
+      c_vector[i] <- length(match.prob[match.prob == max(match.prob)])
+    }
+    else
+      c_vector[i] <- 0
+      T_vector[i] <- is.element(i, rownames(data)[match.prob == max(match.prob)])
+  }
+ 
+  K_vector <- (c_vector * T_vector == 1)
+  F_vector <- (c_vector * (1 - T_vector) == 1)
+  s <- length(c_vector[c_vector == 1 & is.na(c_vector) == FALSE])
+ 
+  res_r <- list(c_vector = c_vector,
+                T_vector = T_vector,
+                K_vector = K_vector,
+                F_vector = F_vector,
+                s = s
+  )
+  return(res_r)
+}
+
+```
+```{r}
+ known.vars <- c("SEX_2", "SEX_1", "RACE_2","RACE_1","RACE_5","RACE_4","RACE_3",  "AGE", "EDUC_3", "EDUC_1", "EDUC_2","HOURSWRK",  "HEALTH_1","HEALTH_2","HRSLEEP", "WORRY_3", "WORRY_5", "WORRY_4", "WORRY_1", "WORRY_2")
+ syn.vars <- c("INCOME")
+ n <- dim(data_org)[1]
+ KeyQuantities <- CalculateKeyQuantities(data_org, data_syn,
+                                        known.vars, syn.vars, n)
+```
+```{r}
+ IdentificationRisk <- function(c_vector, T_vector, K_vector, F_vector, s, N){
+ 
+  nonzero_c_index <- which(c_vector > 0)
+  exp_match_risk <- sum(1/c_vector[nonzero_c_index]*T_vector[nonzero_c_index])
+  true_match_rate <- sum(na.omit(K_vector))/N
+  false_match_rate <- sum(na.omit(F_vector))/s
+  res_r <- list(exp_match_risk = exp_match_risk,
+                true_match_rate = true_match_rate,
+                false_match_rate = false_match_rate
+  )
+  return(res_r)
+}
+```
+```{r}
+#- each record is a target, therefore ```N = n```
+c_vector <- KeyQuantities[["c_vector"]]
+T_vector <- KeyQuantities[["T_vector"]]
+K_vector <- KeyQuantities[["K_vector"]]
+F_vector <- KeyQuantities[["F_vector"]]
+s <- KeyQuantities[["s"]]
+N <- n
+ThreeSummaries <- IdentificationRisk(c_vector, T_vector, K_vector, F_vector, s, N)
+```
+```{r}
+ThreeSummaries[["exp_match_risk"]]
+ThreeSummaries[["true_match_rate"]]
+ThreeSummaries[["false_match_rate"]]
+```
+# Risk evaluation - Attribute risk disclosure
+```{r}
+# Assume all variables except for income are known
+# But we cannot log the values! 
+```
+
+
+
+
+
+
+
