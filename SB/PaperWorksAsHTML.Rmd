@@ -1,0 +1,187 @@
+---
+title: "NHIS Synthesis"
+author: |
+  Sarah Boese^[ sboese@vassar.edu] $^1$,
+   $^1$Vassar College
+always_allow_html: yes
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+header-includes:
+- \usepackage{endfloat}
+- \usepackage{setspace}
+- \doublespacing
+- \usepackage{lineno}
+- \linenumbers
+fig_caption: yes
+abstract: "In this analysis, I look at a small subset of the National Health Interview
+  Survey for 2018 pertaining to chronic conditions, worker status and missed work
+  days. I use demographic data as unsynthesized predictors for this data. In so doing,
+  I assume that demographics impact a person's likelohood for having a chronic condition.
+  The main goal is to make sure that individuals who have chronic conditions are not
+  made vulnerable to employers or healthcare insureance providers becuase of their
+  participation in this survey. \n"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Setup..., message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(fig.pos = 'p') # Places figures on their own pages
+knitr::opts_chunk$set(out.width = '100%', dpi=300)
+
+# I usually load my libraries up front to keep things organized
+library(bookdown)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(ggthemes)
+library(ggExtra)
+library(dplyr)
+library(stringr)
+library(tinytex)
+
+```
+
+# Introduction
+
+## Research Questions
+
+The National Health Interview Survey (NHIS) is a yearly survey conducted by the US Census Bureau conserning a broad range of health topics. My research has focused on the Sample Adult 2018 file, just one set of microdata released each year. This particular dataset includes 742 variables, many of which are sensative. For my purposes, however, I am limiting my scope to only six variables: SEX (gender), RACERPI2 (race), AGE_P (age), FLA1AR (functional limitation), DOINGLWA (employment status) and WKDAYR (lost work days). I wish to answer the following questions: Are these demographic variables good predictors for FLA1AR and DOINGLWA? How can we best preserve the relationship between catagorical variables describing functional limitation and work status to the continuous variable recording number of lost work days in a year? Moreover, does the entire synthesis process preserve to a satisfactory degree the "usefulness" of the data in further analysis? After I develop these models, the question becomes if such models still satisfactorally minimize risk of both identification and attribute disclosure?
+
+
+## Background/Significance of Research
+
+Here is where I will outline the identifucation/attribute disclosure risk for the specific variables I am intending to synthesize. First I must define what identification risk and attribute disclosure risk are, and why it is important for those holding data to maintain confidentiality guarentees. We are specifically looking a microdata to also maintain high utility...
+
+# Analysis
+
+## Methods Used to Obtain Data
+
+As mentioned above, I obtained the variables of interest from the NHIS Sample Adult data set for 2018. Below I include descriptions of both the predictor and to-be-synthesized variables:  
+
+### Predictor Variables
+
+ The __SEX__ variable is a binarly variable used to represent gender (restricted to the gender binary):
+ 
+\begin{center}
+\begin{tabular}{c c}
+
+1 & Male\\
+2 & Female
+
+\end{tabular}
+\end{center}
+
+The __RACERPI2__ variable is a sis-level catagorical variable describing race. It is not the only variable pertaining to race in the Sample Adult dataset, however, it is the most up-to-date in terms of OMB standards. 
+
+\begin{center}
+\begin{tabular}{c c}
+
+1 & White only\\
+2 & Black/African American only\\
+3 & AIAN only\\
+4 & Asian only \\
+5 & Race group not releasable\\
+6 & Multiple Race.
+
+\end{tabular}
+\end{center}
+
+Finally, __AGE_P__ is the age variable in the survey. It is integer valued and topcoded at $85$:
+
+\begin{center}
+\begin{tabular}{c c}
+
+18-84 & 18-84 years of age\\
+85 & 85+ years of age.
+
+\end{tabular}
+\end{center}
+
+### Synthesized Variables
+
+__FLA1AR__ is a binary varibale denoting if a participant has any functional limitation. I chose not to look at wheather or not that limitation was chronic. Over $95$ percent of people experienceing a funcitonal limitation has one such limitation which is chronic. As part of the cleaning process, I delete the rows such where $FLA1AR=3$. 
+
+
+-Outcome (Catagorical): 
+
+\begin{center}
+\begin{tabular}{c c}
+
+1 & Limited in any way\\
+2 & Not limited in any way\\
+3 & Unknown if limited\\
+
+\end{tabular}
+\end{center}
+
+-Model: 
+To model FLA1AR I will only be using race and gender as predictor variables. I used a logit regression with the following parameters:
+
+
+\begin{align*}
+
+y_i&\sim Bernoulli(p_i)\\
+
+logit(p_i)&=m beta_1 + beta_2\cdot SEX_{female} + beta_3\cdot RACE_{black} + beta_4 \cdot RACE_{AIAN}
++ beta_5\cdot RACE_{asian} + beta_5\cdot RACE_{unrecorded} + beta_6\cdot RACE_{multiple}\\
+
+beta_i & \sim Normal(0, 0.1).  
+
+\end{align*}
+
+## DOINGLWA Variable
+
+In my analysis, I consider the __DOINGLWA__ is a 5-level catagorical variable representing a participant's work status during the previous week. However, in the NHIS survey, there are three non-recorded options. For the purposed of my analysis I will only participants that gave answers falling within the outcomes one through five below:  
+
+-Outcome (Catagorical)
+
+\begin{center}
+\begin{tabular}{c c}
+1 & Working for pay at a job or business\\
+2 & With a job or business but not at work\\
+3 & Looking for work\\
+4 & Working, but not for pay, at a family-owned job or business\\
+5 & Not working at a job or business and not looking for work\\
+7 & Refused\\
+8 & Not ascertained\\
+9 & Don't know
+\end{tabular}
+\end{center}
+
+-Model:
+
+\begin{align*}
+
+y_i\sim Multinomial(p[i,1:C]) \mid p[i,1:C]\sim Dirichlet(\alpha[1:C]) \textrm{ where } \alpha[c]=1.
+
+\end{align*}
+
+Here $C=5$ as I do not consider nonrecoreded values. 
+
+
+## WKDAYR Variable
+
+-Description: Number of work loss days, past 12 months
+
+-Outcome (Continuous)
+
+\begin{center}
+\begin{tabular}{c c}
+  $000$ & None\\
+  $001-366$ & 1 - 366 days\\
+  $997$ & Refused\\
+  $998$ & Not ascertained\\
+  $999$ & Don't know
+  
+\end{tabular}
+\end{center}
+
+-I am using a Poisson Model to count the number of days of the year the number of work loss days per month with linear predictor determined by the synthesized values of FLA1AR and DOINGLWA variables. 
+
+-Model: $y_i\sim Poisson(\lambda_i)$ where $log(\lambda_i)\sim \beta_0 + \beta_1\cdot x_{lim}+\beta_2\cdot x_{stat_1}+\beta_3\cdot x_{stat_2}+\beta_4\cdot x_{stat_3}+\beta_5\cdot x_{stat_4}+\beta_6\cdot x_{stat_5}$ such that $\beta_i\sim Normal(0,10)$. 
+
+-Here $x_lim$ denotes $FLA1AR=1$, and $x_{stat_i}$ denotes $DOINGLWA=i$. 

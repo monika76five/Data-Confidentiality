@@ -1,0 +1,151 @@
+---
+title: "Presentation(4.21)"
+author: "Sarah Boese"
+date: "4/5/2020"
+output: 
+  beamer_presentation:
+    theme: "Singapore"
+    colortheme: "seahorse"
+---
+
+```{r, message = FALSE, echo=FALSE}
+library(ProbBayes)
+library(dplyr)
+library(ggplot2)
+require(gridExtra)
+library(reshape)
+library(runjags)
+library(coda)
+library(tidyverse)
+library(fastDummies)
+crcblue <- "#2905a1"
+```
+
+```{r, message = FALSE, echo=FALSE}
+utility_df<-read.csv("C:\\Users\\sarahboese\\Documents\\Data Confidentiality\\HealthSurveyExploration (project 3)\\utility_df_1.csv")
+Up_lim<-utility_df[1,1]
+Up_stat<-utility_df[2,1]
+Up_wrk<-utility_df[3,1]
+Uc_lim<-utility_df[1,2]
+Uc_stat<-utility_df[2,2]
+Uc_wrk<-utility_df[3,2]
+
+risk_df<-read.csv("risk_df_1.csv")
+exp_match_risk<-risk_df$exp_match_risk
+true_match_rate<-risk_df$true_match_rate
+false_match_rate<-risk_df$false_match_rate
+```
+
+# New Models 
+
+## FLA1AR (Functional Limitation)
+-Logit Regression
+
+```{r, eval=FALSE}
+modelString_lim <-"
+model {
+## sampling
+for (i in 1:N){
+y[i] ~ dbern(p[i])
+logit(p[i]) <- beta[1] + beta[2]*X[i,1] + beta[3]*X[i,2] + 
+                   beta[4]*X[i,3] + beta[5]*X[i,4] + beta[6]*X[i,5] + beta[7]*X[i,6]
+}
+## priors
+ for(j in 1:7){
+    beta[j] ~ dnorm(0,0.1)
+   }
+}
+"
+```
+
+## DOINGLWA (Work Status)
+-5-level Multinomial Logit Regression
+```{r, eval=FALSE}
+ modelString_stat <-"
+model {
+## sampling
+for (i in 1:N){
+    y[i] ~ dcat(p[i, 1:C])
+    for(c in 1:C){
+      log(q[i,c]) <- beta[1,c] + beta[2,c]*X[i,1] + beta[3,c]*X[i,2] + 
+                   beta[4,c]*X[i,3] + beta[5,c]*X[i,4] + beta[6,c]*X[i,5] + 
+                   beta[7,c]*X[i,6] + beta[8,c]*X[i,7]
+    }
+    for(c in 1:C){
+    p[i,c] <- q[i,c]/sum(q[i,1:C])
+    }
+}
+## priors
+for (k in 1:8){
+  for(c in 1:C){
+  beta[k,c] ~ dnorm(0,0.1)
+  }
+} 
+}
+"
+```
+
+# Recalculating Propensity Score
+
+## Calculating Propensity Score
+
+```{r, eval=FALSE}
+Up_lim<-calc_Up("FLA1AR", merged_data_lim)
+Up_stat<-calc_Up("DOINGLWA", merged_data_stat)
+Up_wrk<-calc_Up("WKDAYR", merged_data_wrk)
+```
+
+```{r}
+Up_lim
+```
+
+```{r}
+Up_stat
+```
+
+```{r}
+Up_wrk
+```
+
+# Identification Risk
+
+## Forming Synthetic and Original Data Sets
+
+```{r, eval=FALSE}
+known.vars <- list("SEX", "RACERPI2", "AGE_P")
+syn.vars <- list("FLA1AR", "DOINGLWA", "WKDAYR") 
+OriginalData<-select(NHIS_df, c(FLA1AR, DOINGLWA, WKDAYR, SEX, RACERPI2, AGE_P))
+names(OriginalData)<-c("FLA1AR", "DOINGLWA", "WKDAYR", "SEX", "RACERPI2", "AGE_P")
+n <- nrow(SyntheticData)
+KeyQuantities <- CalculateKeyQuantities(OriginalData, SyntheticData, known.vars, syn.vars, n)
+```
+
+## Running Calculations
+
+```{r, eval=FALSE}
+c_vector <- KeyQuantities[["c_vector"]]
+T_vector <- KeyQuantities[["T_vector"]]
+K_vector <- KeyQuantities[["K_vector"]]
+F_vector <- KeyQuantities[["F_vector"]]
+s <- KeyQuantities[["s"]]
+N <- n
+ThreeSummaries <- IdentificationRisk(c_vector, T_vector, K_vector, F_vector, s, N)
+exp_match_rate<-ThreeSummaries[["exp_match_risk"]]
+true_match_rate<-ThreeSummaries[["true_match_rate"]]
+false_match_rate<-ThreeSummaries[["false_match_rate"]]
+```
+
+## Results
+
+```{r}
+exp_match_risk
+```
+
+```{r}
+true_match_rate
+```
+
+```{r}
+false_match_rate
+```
+
