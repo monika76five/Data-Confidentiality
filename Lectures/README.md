@@ -13,5 +13,7 @@
     8. Methods for Risk Evaluation 2
     9. Methods for Risk Evaluation 3
     10. Differential Privacy Overview 1
+    11. Differential Privacy Overview 2
+    12. Differentially Private Synthetic Tabular Data
 
 - There is a LectureStyle.tex file for all lectures.
