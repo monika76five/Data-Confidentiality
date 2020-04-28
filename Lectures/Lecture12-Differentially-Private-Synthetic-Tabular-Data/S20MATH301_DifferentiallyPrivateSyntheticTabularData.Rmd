@@ -1,0 +1,291 @@
+---
+title: Differentially Private Synthetic Tabular Data
+author: Jingchen (Monika) Hu 
+institute: Vassar College
+date: Data Confidentiality
+output:
+  beamer_presentation:
+    includes:
+      in_header: ../LectureStyle.tex
+slide_level: 2
+fontsize: 11pt
+
+---
+
+
+```{r setup, include=FALSE}
+require(dplyr)
+require(ggplot2)
+knitr::opts_chunk$set(echo = TRUE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+```
+
+## Outline
+
+\tableofcontents[hideallsubsections]
+
+# Introduction
+
+## Recap of differential privacy
+
+- Definitions: database, query, output, sensitivity, privacy budge, and added noise
+
+- Implications of key terms in differential privacy: the relationship between sensitivity ($\Delta f$), privacy budget ($\epsilon$), and added noise
+
+\pause 
+
+- The Laplace Mechanism
+    - adds random noise according to $\epsilon-$differential privacy guarantee
+    - the noise is drawn from a Laplace distribution centered at 0, with scale $\frac{\Delta f}{\epsilon}$
+    
+- DP properties: example queries to the confidential CE databse
+
+## Recap of synthetic data
+
+- A conjugate Bayesian model for categorical variables: Dirichlet-multinomial; now for contingency tables
+
+1. Suppose we have a count vector ${{\bf{y}}}$ of length $I$, with total number of records $y.$ (the sum of ${{\bf{y}}}$). The multinomial sampling model follows:
+
+\begin{equation}
+{{\bf{y}}} \mid {{\boldsymbol{\theta}}} \sim \textrm{Multinomial}(y.; {{\boldsymbol{\theta}}}).
+\end{equation}
+
+\pause
+
+2. A conjugate prior for ${\bf{\theta}}$ is Dirichlet:
+\begin{equation}
+{{\boldsymbol{\theta}}} \sim \textrm{Dirichlet}({{\boldsymbol{\alpha}}}). 
+\end{equation}
+
+\pause
+
+3. Due to conjugacy, we come to a Dirichlet posterior for ${\bf{\theta}}$:
+
+\begin{equation}
+{{\boldsymbol{\theta}}} \mid {{\bf{y}}} \sim \textrm{Dirichlet}({{\bf{y}}} + {{\boldsymbol{\alpha}}}).
+\end{equation}
+
+## Overview
+
+- Can we make the Dirichlet-multinomial synthesizer satisfy $\epsilon-$differential privacy?
+
+- The original $\epsilon-$differential privacy definition: a mechanism $\mathcal{M}$ with domain $\mathbb{N}^{|\mathcal{X}|}$ is $\epsilon-$differentially private for all $\mathcal{S} \subseteq \textrm{Range}(\mathcal{M})$ and for all $\bf{x}, \bf{y} \in \mathbb{N}^{|\mathcal{X}|}$ such that $\delta({\bf{x}}, {\bf{y}}) = 1$:
+
+\begin{equation}
+\left|\ln\left(\frac{Pr[\mathcal{M}({\bf{x}}) \in \mathcal{S}]}{Pr[\mathcal{M}({\bf{y}}) \in \mathcal{S}]}\right)\right| \leq \epsilon.
+\end{equation}
+
+- What to do for synthetic tabular data?
+
+## Overview cont'd
+
+- Now in synthetic tabular data: 
+
+Let ${\bf{y}}$ denote the true count vector of length $I$, and ${\bf{x}}$ denote another count vector with Hamming distance 1 from ${\bf{y}}$ ($\delta({{\bf{x}}}, {{\bf{y}}}) = 1$) and $\sum_{i=1}^{I}x_i = \sum_{i=1}^{I}y_i$. Let $y.^*$ denote an $\epsilon-$differentially private synthetic count vector, and $\boldsymbol{\theta}$ denote model parameters vector. In such setting, $\epsilon-$differential privacy requires
+
+\begin{equation}
+\left|\ln\left(\frac{p({\bf{y}}^* \mid {\bf{y}}, {\boldsymbol{\theta}})}{p({\bf{y}}^* \mid {\bf{x}}, {\boldsymbol{\theta}})}\right)\right| \leq \epsilon.
+\end{equation}
+
+\pause
+
+- If we can the Dirichlet-multinomial synthesizer satisfy $\epsilon-$differential privacy, we produce \textcolor{red}{differentially private synthetic tabular data}
+
+# $\epsilon-$differential privacy with Dirichlet-multinomial
+
+## The procedure
+Abowd and Vilhuber (2008) and Machanavajjhala et al. (2008)
+
+- To generate a differentially private synthetic count vector ${{\bf{y}}}^*$ given $y.^* = y.$ (the total sum is fixed):
+
+1. Sample ${{\boldsymbol{\theta}}}^*$ from
+
+\begin{equation}
+{{\boldsymbol{\theta}}} \mid {{\bf{y}}} \sim \textrm{Dirichlet}({{\bf{y}}} + {{\boldsymbol{\alpha}}}),
+\end{equation}
+where \textcolor{red}{$\textrm{min}(\alpha_i) \geq \frac{y.^*}{\exp(\epsilon) - 1}$}.
+
+\pause
+
+2. Sample ${{\bf{y}}}^*$ from
+
+\begin{equation}
+{{\bf{y}}}^* \mid {{\boldsymbol{\theta}}}^* \sim \textrm{Multinomial}(y.^*; {{\boldsymbol{\theta}}}^*),
+\end{equation}
+and the generated count vector ${{\bf{y}}}^*$ satisfies $\epsilon-$differential privacy.
+
+## Why it works?
+
+- The posterior predictive distribution is:
+
+\begin{eqnarray}
+p({{\bf{y}}}^* \mid {\bf{y}}, {\boldsymbol{\alpha}}) &=& \int p({\bf{y}}^* \mid {\boldsymbol{\theta}}, {\boldsymbol{\alpha}}) \times p({\boldsymbol{\theta}} \mid {\bf{y}}, {\boldsymbol{\alpha}}) d {\boldsymbol{\theta}} \nonumber \\
+&=& \int \frac{y.^* !}{\prod_{i=1}^{I} y^*_i !} \times \prod_{i=1}^{I} \theta_i^{y^*_i} \times  \frac{\Gamma(\sum_{i=1}^{I}y_i + \alpha_i)}{\prod_{i=1}^{I} \Gamma(y_i + \alpha_i)} \times \prod_{i=1}^{I} \theta_i^{y_i + \alpha_i - 1} d {\boldsymbol{\theta}} \nonumber \\
+&=& \frac{y.^* !}{\prod_{i=1}^{I} y^*_i !} \times \frac{\Gamma(\sum_{i=1}^{I}y_i + \alpha_i)}{\prod_{i=1}^{I} \Gamma(y_i + \alpha_i)} \times \frac{\prod_{i=1}^{I}\Gamma(y^*_i + y_i + \alpha_i)}{\Gamma(\sum_{i=1}^{I}y^*_i + y_i + \alpha_i)}. 
+\end{eqnarray}
+
+## Why it works? cont'd
+
+- To satisfy $\epsilon-$differential privacy, we require 
+
+\begin{equation}
+\left|\log\left(\frac{p({\bf{y}}^* \mid {\bf{y}}, {\boldsymbol{\alpha}})}{p({\bf{y}}^* \mid {\bf{x}}, {\boldsymbol{\alpha}})}\right)\right| = \left| \log\left( \frac{\prod_{i=1}^{I} \Gamma(\alpha_i + x_i)}{\prod_{i=1}^{I}\Gamma(\alpha_i + y_i)} \times \frac{\prod_{i=1}^{I}\Gamma(y^*_i + \alpha_i + y_i)}{\prod_{i=1}^{I}\Gamma(y^*_i + \alpha_i + x_i)} \right) \right| \leq \epsilon
+\end{equation}
+
+- ${\bf{x}}$ has Hamming distance 1 from ${\bf{y}}$ (i.e. $\delta({{\bf{x}}}, {{\bf{y}}}) = 1$) 
+- $\sum_{i=1}^{I}x_i = \sum_{i=1}^{I}y_i$ (total sum is fixed)
+
+
+## Why it works? cont'd
+
+- Assume the the only differences in ${\bf{x}}$ and ${\bf{y}}$ exist between the pairs $(x_i, x_{i'})$ and $(y_i, y_{i'})$
+
+- Without loss of generality, assume $x_i = y_i - 1$ and $x_{i'} = y_{i'} + 1$
+
+\begin{equation}
+\frac{p({\bf{y}}^* \mid {\bf{y}}, {\boldsymbol{\alpha}})}{p({\bf{y}}^* \mid {\bf{x}}, {\boldsymbol{\alpha}})} = \frac{\alpha_i + y_i}{\alpha_{i'} + y_{i'} - 1} \times \frac{y^*_{i'} + \alpha_{i'} + y_{i'} - 1}{y^*_i + \alpha_i + y_i},
+\end{equation}
+where $y^*_i + y^*_{i'} \leq y.^*$.
+
+## Why it works? cont'd
+
+\begin{equation*}
+\frac{p({\bf{y}}^* \mid {\bf{y}}, {\boldsymbol{\alpha}})}{p({\bf{y}}^* \mid {\bf{x}}, {\boldsymbol{\alpha}})} = \frac{\alpha_i + y_i}{\alpha_{i'} + y_{i'} - 1} \times \frac{y^*_{i'} + \alpha_{i'} + y_{i'} - 1}{y^*_i + \alpha_i + y_i}
+\end{equation*}
+
+- Maximized when $y_{i'} = 1, y^*_i = 0$ and $y^*_{i'} = z.$
+- Minimized when $y_{i'} = 0, y^*_{i'} = 0$ and $y^*_i = z.$
+
+\begin{equation}
+\frac{\alpha_i}{y.^* + \alpha_i} \leq \frac{p({\bf{y}}^* \mid {\bf{y}}, {\boldsymbol{\alpha}})}{p({\bf{y}}^* \mid {\bf{x}}, {\boldsymbol{\alpha}})} \leq \frac{y.^* + \alpha_{i'}}{\alpha_{i'}}.
+\end{equation}
+
+
+## Why it works? cont'd
+
+- Now to satisfy $\epsilon-$differential privacy where $\left|\log\left(\frac{p({\bf{y}}^* \mid {\bf{y}}, {\boldsymbol{\alpha}})}{p({\bf{y}}^* \mid {\bf{x}}, {\boldsymbol{\alpha}})}\right)\right| \leq \epsilon$, we require
+
+\begin{equation}
+\epsilon = \log \left(\frac{y.^* + \textrm{min}(\alpha_i)}{\textrm{min}(\alpha_i)} \right),
+\end{equation}
+which results in 
+\begin{equation}
+\textrm{min}(\alpha_i) \geq \frac{y.^*}{\exp(\epsilon) - 1}.
+\end{equation}
+
+# Example: differentially private synthetic CE count table
+
+## CE data
+
+
+| Variable Name | Variable information                                  |
+| :------------ | :---------------------------------------------------- |
+| UrbanRural    | Binary; the urban / rural status of CU: 1 = Urban, 2 = Rural. |
+| Income        | Continuous; the amount of CU income bfore taxes in past 12 months. |
+| \textcolor{red}{Race}          | Categorical; the race category of the reference person: 1 = White, 2 = Black, 3 =                        Native American, 4 = Asian, 5 = Pacific Islander, 6 = Multi-race.  |
+| Expenditure   | Continuous; CU's total expenditures in last quarter.  |
+
+Table: Variables used in the CE database. Data taken from the 2017 CE public use microdata samples. 
+
+## The contingency table of Race categories
+
+```{r message = FALSE, size = "footnotesize"}
+require(readr)
+CEdata <- read_csv("CEdata.csv")
+Race_Count <- CEdata %>% count(Race)
+Race_Count
+```
+
+
+## Step 1: calculate $\boldsymbol{\alpha}$
+
+- Expression for $\boldsymbol{\alpha}$
+\begin{equation*}
+\textrm{min}(\alpha_i) \geq \frac{y.^*}{\exp(\epsilon) - 1}
+\end{equation*}
+
+- Use privacy budget $\epsilon = 5$
+
+```{r message = FALSE, size = "footnotesize"}
+epsilon <- 5
+
+alpha_min <- sum(Race_Count$n)/(exp(epsilon) - 1)
+alpha_min
+```
+
+```{r message = FALSE, size = "footnotesize"}
+alpha_vector <- rep(alpha_min, dim(Race_Count)[1])
+alpha_vector
+```
+
+## Step 2: sample $\boldsymbol{\theta}^*$
+
+
+- ${\bf{y}}$ is the original count vector of ```Race``` categories.
+
+```{r message = FALSE, size = "footnotesize"}
+y_vector <- Race_Count$n
+y_vector
+```
+
+- With the calcuated ```alpha_vector```, sample ${{\boldsymbol{\theta}}^*}$ from $\textrm{Dirichlet}({\bf{y}} + {\boldsymbol{\alpha}})$
+
+```{r message = FALSE, size = "footnotesize"}
+require(gtools)
+set.seed(123)
+theta_DPsyn <- rdirichlet(n = 1, alpha = y_vector + alpha_vector)
+theta_DPsyn
+```
+
+
+## Step 3: sample $\boldsymbol{y}^*$
+
+- With the sampled ```theta_DPsyn```, we can sample ${{\bf{y}}^*}$ from $\textrm{Multinomial}(y.^*; {{\boldsymbol{\theta}}}^*)$
+
+```{r message = FALSE, size = "footnotesize"}
+y_DPsyn <- rmultinom(n = 1, size = sum(y_vector), 
+                     prob = theta_DPsyn)
+```
+
+## Step 3: sample $\boldsymbol{y}^*$ cont'd
+
+- Put original and synthetic side-by-side
+
+```{r message = FALSE, size = "footnotesize"}
+y_DPsyn <- rmultinom(n = 1, size = sum(y_vector), 
+                     prob = theta_DPsyn)
+y_both <- data.frame(y_vector, y_DPsyn)
+names(y_both) <- c("original", "DPsynthetic")
+y_both
+```
+
+## Summary and discussion
+
+- The choice of privacy budget $\epsilon$ has great influence on the resulted differentially private synthetic contingency table
+
+- What are your thoughts?
+
+\pause
+
+- The higher the value of $\epsilon$, the higher the utility
+
+\pause
+
+- Other differentially private synthetic tabular data models:
+    1. beta-binomial (McClure and Reiter, 2012)
+    2. gamma-Poisson (Quick, 2019)
+
+## References
+
+- Abowd, J. M., and L. Vilhuber. (2008). How Protective Are Synthetic Data? Privacy in Statistical Databases, 239–46.
+
+- Machanavajjhala, A., D. and Kifer, J. and Abowd, J.and Gehrke, and L. Vilhuber. (2008). Privacy: Theory Meets Practice on the Map. The IEEE 24th International Conference on Data Engineering, 277–86.
+
+- McClure, D., and J. P. Reiter. (2012). Differential Privacy and Statistical Disclosure Risk Measures: An Investigation with Binary Synthetic Data. Transactions on Data Privacy 5: 535–52.
+
+- Quick, H. (2019). Generaing Poisson-distributeed differentially private synthetic data. arXiv:1906.00455.
+
