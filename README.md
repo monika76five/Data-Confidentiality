@@ -237,3 +237,18 @@ Office hours: Wednesdays 10am-12pm and Thursdays 11:30am-12:30pm; use this Zoom 
     4. the results of the analysis (tables, charts, graphs, significance, confidence intervals, descriptive text)
     
 **Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
+
+
+## Differentially Private Synthetic Data - Microdata, Tuesday 5/5/2020
+
+### To-do (done before class on 5/5)
+    
+1. <ins>**Prepare up to 10 slides about your complete project (synthesis model(s), utility and risks results) and prepare to present to the class.**<ins>
+    
+2. <ins>**A project write-up draft including the following items**<ins> (visit the Projects folder for detail)
+    1. the research question(s)
+    2. background/significance of the research
+    3. the methods used to obtain and analyze the data
+    4. the results of the analysis (tables, charts, graphs, significance, confidence intervals, descriptive text)
+    
+**Make sure to use an R script / R Markdown file to document your work and bring your laptop to class. Also, write down any questions / comments you have and bring them to class for discussion.**
