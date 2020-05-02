@@ -604,15 +604,168 @@ median(data_orig$INCOME)
 I
 ```
 # Risk Evaluation with radius
+
+
 ```{r}
-CalculateKeyQuantities <- function(origdata, syndata, known.vars, syn.vars, n, radius){
+syndata <- vector("list",m)
+for(i in 1:m){
+  INCOME <- synthetic_m[[i]]$SynIncome
+  syndata[[i]] <- data.frame(origdata[,1:21], INCOME)
+  #colnames(syndata[[i]])[colnames(syndata[[i]]) == "synthetic_m[[i]]$SynIncome"] <- "INCOME"
+}
+IdentificationRisk <- function(origdata, syndata, known.vars, syn.vars,  m, n, percent){
   origdata <- origdata
   syndata <- syndata
+  #synincome <- income_cols
+  m <- m 
+  n <- n 
+  c_vector <- matrix(rep(NA, n*m), ncol = m)
+  T_vector <- matrix(rep(NA, n*m), ncol = m)
+  
+  for (i in 1:n){
+    for (k in 1:m){
+      #syndata$INCOME = income_cols[[k]]
+      radius <- origdata$INCOME[i] * percent
+      syndata_k <- syndata[[k]]
+     
+      match_k<-(eval(parse(text=paste("origdata$",known.vars,"[i]==
+                                        syndata_k$",known.vars,sep="",
+                                        collapse="&")))&
+                  (eval(parse(text=paste("syndata_k$",syn.vars,"<=
+                                      origdata$",syn.vars,"[i]+",
+                                      radius,sep="",collapse="&")))&
+                     eval(parse(text=paste("syndata_k$",syn.vars,">=
+                                      origdata$",syn.vars,"[i]-",
+                                      radius,sep="",collapse="&")))))
+      
+      
+      match.prob_k <- ifelse(match_k,1/sum(match_k),0)
+      
+      if (max(match.prob_k) > 0){
+        c_vector[i, k] <- length(match.prob_k[match.prob_k 
+                                              == max(match.prob_k)])
+      }
+      else {
+        c_vector[i, k] <- 0
+      }
+      T_vector[i, k] <- is.element(i,rownames(origdata)
+                                   [match.prob_k == max(match.prob_k)])
+    }
+  }
+  
+  K_vector <- matrix(rep(NA, n*m), ncol = m)
+  F_vector <- matrix(rep(NA, n*m), ncol = m)
+  for (k in 1:m){
+    K_vector[, k] <- (c_vector[, k]*T_vector[, k]==1)
+    F_vector[, k] <- (c_vector[, k]*(1 - T_vector[, k])==1)
+  }
+  
+  s_vector <- rep(NA, m)
+  exp_match_risk_vector <- rep(NA, m)
+  true_match_rate_vector <- rep(NA, m)
+  false_match_rate_vector <- rep(NA, m)
+  for (k in 1:m){
+    s_vector[k] <- length(c_vector[c_vector[, k]==1 & 
+                                     is.na(c_vector[, k])==FALSE, k])
+    nonzero_c_index <- which(c_vector[, k]>0)
+    exp_match_risk_vector[k] <- sum(1/c_vector[nonzero_c_index, k] 
+                              * T_vector[nonzero_c_index, k])
+    true_match_rate_vector[k] <- sum(na.omit(K_vector[, k]))/n
+    if(s_vector[k] == 0){
+      false_match_rate_vector[k] = 1
+    } else {
+      false_match_rate_vector[k] <- sum(na.omit(F_vector[, k]))/s_vector[k]
+    }
+    #print(s_vector[k])
+  }
+  
+  
+  res_r <- list(s_vector = s_vector,
+                exp_match_risk_vector = exp_match_risk_vector,
+                true_match_rate_vector = true_match_rate_vector,
+                false_match_rate_vector = false_match_rate_vector,
+                c_vector = c_vector,
+                T_vector = T_vector,
+                K_vector = K_vector,
+                F_vector = F_vector
+  )
+  return(res_r)
+}
+
+known.vars <- c("SEX_2", "SEX_1")#, "RACE_2","RACE_1","RACE_5","RACE_4","RACE_3", "EDUC_3", "EDUC_1", "EDUC_2")#  "HEALTH_1","HEALTH_2", "WORRY_3", "WORRY_5", "WORRY_4", "WORRY_1", "WORRY_2")
+syn.vars <- c("INCOME")
+n <- dim(data_orig)[1]
+
+output <- IdentificationRisk(data_orig, syndata, known.vars, syn.vars, m, n, 0.5)
+
+
+mean(output[["exp_match_risk_vector"]])
+mean(output[["true_match_rate_vector"]])
+mean(output[["false_match_rate_vector"]])
+
+output <- IdentificationRisk(data_orig, syndata, known.vars, syn.vars, m, n, 0.75)
+
+
+mean(output[["exp_match_risk_vector"]])
+mean(output[["true_match_rate_vector"]])
+mean(output[["false_match_rate_vector"]])
+
+output <- IdentificationRisk(data_orig, syndata, known.vars, syn.vars, m, n, 0.9)
+
+
+mean(output[["exp_match_risk_vector"]])
+mean(output[["true_match_rate_vector"]])
+mean(output[["false_match_rate_vector"]])
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+CalculateKeyQuantities <- function(origdata, syndata, known.vars, syn.vars, n, radius){
+  #origdata <- origdata
+  #syndata <- syndata
   n <- n
   c_vector <- rep(NA, n)
   T_vector <- rep(NA, n)
   for (i in 1:n){
-    match_k<-(eval(parse(text=paste("origdata$",known.vars,"[i]==
+    match<-(eval(parse(text=paste("origdata$",known.vars,"[i]==
                                         syndata$",known.vars,sep="",
                                         collapse="&")))&
                   (eval(parse(text=paste("syndata$",syn.vars,"<=
@@ -625,10 +778,13 @@ CalculateKeyQuantities <- function(origdata, syndata, known.vars, syn.vars, n, r
    
     if (max(match.prob) > 0){
       c_vector[i] <- length(match.prob[match.prob == max(match.prob)])
-    }
-    else
+      
+      
+    } else {
       c_vector[i] <- 0
-      T_vector[i] <- is.element(i, rownames(data)[match.prob == max(match.prob)])
+    }
+    T_vector[i] <- is.element(i, rownames(origdata)[match.prob == max(match.prob)])
+      #print(T_vector[i])
   }
  
   K_vector <- (c_vector * T_vector == 1)
@@ -647,19 +803,22 @@ CalculateKeyQuantities <- function(origdata, syndata, known.vars, syn.vars, n, r
  IdentificationRisk <- function(c_vector, T_vector, K_vector, F_vector, s, N){
  
   nonzero_c_index <- which(c_vector > 0)
+  #print(nonzero_c_index)
   exp_match_risk <- sum(1/c_vector[nonzero_c_index]*T_vector[nonzero_c_index])
   true_match_rate <- sum(na.omit(K_vector))/N
   false_match_rate <- sum(na.omit(F_vector))/s
   res_r <- list(exp_match_risk = exp_match_risk,
                 true_match_rate = true_match_rate,
                 false_match_rate = false_match_rate
+                
   )
+
   return(res_r)
 }
 ```
 
 ```{r}
- known.vars <- c("SEX_2", "SEX_1", "RACE_2","RACE_1","RACE_5","RACE_4","RACE_3",  "AGE", "EDUC_3", "EDUC_1", "EDUC_2","HOURSWRK",  "HEALTH_1","HEALTH_2","HRSLEEP", "WORRY_3", "WORRY_5", "WORRY_4", "WORRY_1", "WORRY_2")
+ known.vars <- c("SEX_2", "SEX_1","RACE_2","RACE_1","RACE_5","RACE_4","RACE_3", "EDUC_3", "EDUC_1", "EDUC_2") # "HEALTH_1","HEALTH_2", "WORRY_3", "WORRY_5", "WORRY_4", "WORRY_1", "WORRY_2")
  syn.vars <- c("INCOME")
  n <- dim(data_orig)[1]
  
@@ -668,16 +827,23 @@ CalculateKeyQuantities <- function(origdata, syndata, known.vars, syn.vars, n, r
  fmr <- rep(NA,m)
  
  for(i in 1:m){
-   i=1
    data_syn$INCOME <- synthetic_m[[i]]$SynIncome
-   KeyQuantities <- CalculateKeyQuantities(data_orig, data_syn,
-                                        known.vars, syn.vars, n, 1000)
+   #names(data_syn)
+     KeyQuantities <- CalculateKeyQuantities(data_orig, data_syn,
+                                          known.vars, syn.vars, n, 100000)
    
   c_vector <- KeyQuantities[["c_vector"]]
   T_vector <- KeyQuantities[["T_vector"]]
   K_vector <- KeyQuantities[["K_vector"]]
   F_vector <- KeyQuantities[["F_vector"]]
+  
+  #print(c_vector)
+  #print(T_vector)
+  #print(K_vector)
+  #print(F_vector)
+  
   s <- KeyQuantities[["s"]]
+  #print(s)
   N <- n
   ThreeSummaries <- IdentificationRisk(c_vector, T_vector, K_vector, F_vector, s, N)
   emr[i] <- ThreeSummaries[["exp_match_risk"]]
