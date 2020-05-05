@@ -1,0 +1,283 @@
+---
+title: Differentially Private Synthetic Microdata
+author: Jingchen (Monika) Hu 
+institute: Vassar College
+date: Data Confidentiality
+output:
+  beamer_presentation:
+    includes:
+      in_header: ../LectureStyle.tex
+slide_level: 2
+fontsize: 11pt
+
+---
+
+
+```{r setup, include=FALSE}
+require(dplyr)
+require(ggplot2)
+knitr::opts_chunk$set(echo = TRUE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+```
+
+## Outline
+
+\tableofcontents[hideallsubsections]
+
+# Introduction
+
+## Recap of differential privacy
+
+- Definitions: database, query, output, sensitivity, privacy budge, and added noise
+
+- Implications of key terms in differential privacy: the relationship between sensitivity ($\Delta f$), privacy budget ($\epsilon$), and added noise
+
+- The Laplace Mechanism
+    - adds random noise according to $\epsilon-$differential privacy guarantee
+    - the noise is drawn from a Laplace distribution centered at 0, with scale $\frac{\Delta f}{\epsilon}$
+    
+- DP properties: example queries to the confidential CE databse
+
+## Recap of differntially private synthetic tabular data
+
+- Based on Dirichlet-multinomial conjugate models
+
+- To generate a differentially private synthetic count vector ${{\bf{y}}}^*$ given $y.^* = y.$ (the total sum is fixed):
+
+1. Sample ${{\boldsymbol{\theta}}}^*$ from
+
+\begin{equation}
+{{\boldsymbol{\theta}}} \mid {{\bf{y}}} \sim \textrm{Dirichlet}({{\bf{y}}} + {{\boldsymbol{\alpha}}}),
+\end{equation}
+where \textcolor{red}{$\textrm{min}(\alpha_i) \geq \frac{y.^*}{\exp(\epsilon) - 1}$}.
+
+
+2. Sample ${{\bf{y}}}^*$ from
+
+\begin{equation}
+{{\bf{y}}}^* \mid {{\boldsymbol{\theta}}}^* \sim \textrm{Multinomial}(y.^*; {{\boldsymbol{\theta}}}^*),
+\end{equation}
+and the generated count vector ${{\bf{y}}}^*$ satisfies $\epsilon-$differential privacy.
+
+## Differentially private synthetic microdata
+
+- Respondent-level data: the focus of our synthetic data approach
+
+- Synthetic data has certain levels of privacy protection
+    - Identification disclosure and IR risks
+    - Attribute disclosure and AR risks
+
+\pause
+
+- However the privacy protection does not satisfy $\epsilon-$differential privacy
+    - Original definition:
+\begin{equation}
+\left|\ln\left(\frac{Pr[\mathcal{M}({\bf{x}}) \in \mathcal{S}]}{Pr[\mathcal{M}({\bf{y}}) \in \mathcal{S}]}\right)\right| \leq \epsilon
+\end{equation}
+    - Updated definition in the context of tabular data
+\begin{equation}
+\left|\ln\left(\frac{p({\bf{y}}^* \mid {\bf{y}}, {\boldsymbol{\theta}})}{p({\bf{y}}^* \mid {\bf{x}}, {\boldsymbol{\theta}})}\right)\right| \leq \epsilon
+\end{equation}
+
+## Outline
+
+- The Exponential Mechanism (McSherry and Talwar, 2007)
+    - it turns a non-private mechanism (e.g. a Bayesian synthesis model) into a private mechanism (e.g. a Bayesian synthesis model satisfying differential privacy)
+
+\pause
+
+- Three mechanisms based on the Exponential Mechanism
+    - pMSE Mechanism (Snoke and Slavovic, 2018)
+    - Posterior Mechanism (Dimitrakakis et al., 2017)
+    - Pseudo Posteror Mechanism (Savitsky et al., 2019)
+    
+# The Exponential Mechanism (EM)
+
+## The background
+
+- Dwork et al. (2006) and Nissim et al. (2007) show that any function of an $\epsilon-$differentially private algorithm also satisfies $\epsilon-$differential privacy
+
+\pause
+
+- In synthetic data generation: if parameters satisfy $\epsilon-$differential privacy, synthetic data generated based on the $\epsilon-$differentially private parameters are also differentially private
+
+\begin{eqnarray}
+\hat{\theta} &\sim& g(\theta), \\
+\mathbf{x}^* &\sim& f(\mathbf{x} \mid \hat{\theta}),
+\end{eqnarray}
+where $\pi(\cdot)$ is the mechanism that makes parameter draws $\hat{\theta}$ differentially private, and $f(\cdot)$ is the sampling model.
+
+- Question: how to make Equation (5) happen?
+
+## The EM
+
+- Proposed by McSherry and Talwar (2007)
+
+- The EM inputs non-private parameters $\theta$ and generates private parameters $\hat{\theta}$ (i.e. satisfying differential privacy)
+
+- In the context of generating differentially private synthetic data from a Bayesian perspective, we follow the general framework proposed by Zhang et al. (2016)
+
+## The EM cont'd
+
+The Exponential Mechanism generates private parameters $\hat{\theta}$ from:
+
+\begin{equation}
+\hat{\theta} \propto \exp \left(\frac{\epsilon \, u({\bf{x}}, \theta)} {2 \Delta_u}\right) \pi(\theta)
+\end{equation}
+
+- $\epsilon$ is the privacy budget
+- $u({\bf{x}}, \theta)$ is the utility function
+- $\Delta_u$ is the sensitivity of the utility function
+- $\pi(\theta)$ is the base distribution to ensure proper density function (one can think of $\pi(\theta)$ as the prior distribution for $\theta$)
+
+## The utility function
+
+- In the DP overview lecture: 
+    - $\Delta_f$ is defined as the $\ell_1-$sensitivity of a query function $f$
+    - which is the maximum change in the in fuction $f$ on ${\bf{x}}$ and ${\bf{y}}$, where ${\bf{x}}, {\bf{y}} \in \mathbb{N}^{|\mathcal{X}|}$ and differ by a single observation (i.e. ${\bf{x}}, {\bf{y}} \in \mathbb{N}^{|\mathcal{X}|}, \delta({\bf{x}}, {\bf{y}}) = 1$)
+
+\pause
+
+- Here:
+    - $\Delta_u$ in the Exponential Mechanism is the global sensitivity
+    - defined as the maxium change in the utility function $u({\bf{x}}, \theta)$ for ${\bf{x}}$ and ${\bf{y}}$
+    - where ${\bf{x}}, {\bf{y}} \in \mathcal{X}^n$ and differ by a single observation (i.e. ${\bf{x}}, {\bf{y}} \in \mathcal{X}^n, \delta({\bf{x}}, {\bf{y}}) = 1$)
+
+- Formally:
+\begin{equation}
+\Delta_u = sup_{\theta \in \Theta} sup_{{\bf{x}}, {\bf{y}}: \delta({\bf{x}}, {\bf{y}}) = 1} |u({\bf{x}}, \theta) - u({\bf{y}}, \theta)|
+\end{equation}
+
+## Summary
+
+- We wish to generate private $\theta$, from which we can ultimately generate and release private ${\bf{x}}$
+
+- The Exponential Mechanism defines a distribution from which private samples, $\hat{\theta}$ can be simulated
+
+- The keys to the Exponential Mechanism are the utility function $u({\bf{x}}, \theta)$ and its global sensitivity $\Delta_u$
+
+\pause
+
+- Next we introduce three mechanisms based on EM to generate differentially private synthetic microdata
+
+# Three mechanisms based on EM
+
+## The pMSE Mechanism
+- Snoke and Slavovic (2018)
+
+- Based on the propensity score measure we have learned:
+    - stack up the original dataset and the synthetic dataset resulting in a merged dataset of size $2n$
+    - and use a classification algorithm (e.g. logistic regression) to predict whether an observation belongs to the original dataset or the synthetic dataset
+    - return a summary statistic $U_p$, which measures overall how close the predicted probability of each observation $\hat{p}_i$ is to $\frac{1}{2}$:
+\begin{equation}
+U_p = \frac{1}{2n} \sum_{i=1}^{2n}(\hat{p}_i - \frac{1}{2})^2.
+\end{equation}
+
+- High level of similarity between the original and the synthetic datasets results in $U_p \approx 0$; low level of similarity results in $U_p \approx \frac{1}{4}$ 
+
+## The pMSE Mechanism cont'd
+
+- One way to turn the $pMSE$ into a utility function that is a function of $\theta$, the parameters, is to take the expectation of $pMSE$ given $\theta$:
+
+\begin{equation}
+u({\bf{x}}, \theta) = \textrm{E}[pMSE({\bf{x}}, {\bf{x}}^{*}) \mid {\bf{x}}, \theta],
+\end{equation}
+where ${\bf{x}}$ is the private database, and ${\bf{x}}^{*}$ is the synthetic database and generated from a Bayesian synthesis model $f(\theta)$, i.e. ${\bf{x}}^{*} \sim f(\theta)$
+
+- The sensitivity of the utility function is bounded
+\begin{equation}
+\Delta_u = sup_{\theta} sup_{\delta({\bf{x}}, {\bf{y}}) = 1} |u({\bf{x}}, \theta) - u({\bf{y}}, \theta)| \leq \frac{1}{n}
+\end{equation}
+
+## The Posterior Mechanism
+
+- Dimitrakakis et al. (2017)
+
+- Use the log-likelihood function as the utility function 
+
+\begin{equation}
+u({\bf{x}}, \theta) = \log \prod_{i=1}^{n}f({\bf{x}}_i \mid \theta),
+\end{equation}
+where the sensitivity of the log-likelihood function is bounded by
+\begin{equation}
+\Delta_u = sup_{\theta} sup_{\delta({\bf{x}}, {\bf{y}}) = 1} |u({\bf{x}}, \theta) - u({\bf{y}}, \theta)| \leq \Delta,
+\end{equation}
+where $\Delta$ is called a Lipschitz bound (which can be infinite in some cases, such as normal, exponential, Poisson, geometric)
+
+## The Posterior Mechanism cont'd
+
+- That is, we can draw private parameter draws $\hat{\theta}$ from:
+
+\begin{equation}
+\hat{\theta} \propto \exp \left(\frac{\epsilon \, log \prod_{i=1}^{n}f(\mathbf{x}_i \mid \theta)} {2 \Delta_u}\right) \pi(\theta)
+\end{equation}
+
+- This Posterior Mechanism achieves an $\epsilon = 2\Delta-$differential privacy guanratee for each posterior draw of $\theta$
+
+## The Pseudo Posterior Mechanism
+
+- Savistsky et al. (2019)
+
+- Generalize the Posterior Mechanism to ensure $\Delta < \infty$
+
+- Key: add weights in the likelihood function
+\begin{equation}
+\log \prod_{i=1}^{n} f(\mathbf{x}_i \mid \theta)^{\alpha_i},
+\end{equation}
+where
+\begin{equation}
+\alpha_i \propto \frac{1}{sup_{\theta \in \Theta}\log(\mathbf{x}_i \mid \theta)}.
+\end{equation}
+
+- Weight-added likelihood is called pseudo likelihood
+
+## The Pseudo Posterior Mechanism cont'd
+
+- Use the log-pseudo likelihood function as the utility function 
+
+\begin{equation}
+u({\bf{x}}, \theta) = \log \prod_{i=1}^{n}f({\bf{x}}_i \mid \theta)^{\alpha_i},
+\end{equation}
+where the sensitivity of the log-pseudo likelihood function is bounded by
+\begin{equation}
+\Delta_u = sup_{\theta} sup_{\delta({\bf{x}}, {\bf{y}}) = 1} |u({\bf{x}}, \theta) - u({\bf{y}}, \theta)| \leq \Delta^{\alpha},
+\end{equation}
+where $\Delta^{\alpha} < \infty$
+
+## The Pseudo Posterior Mechanism cont'd
+
+- That is, we can draw private parameter draws $\hat{\theta}$ from:
+
+\begin{equation}
+\hat{\theta} \propto \exp \left(\frac{\epsilon \, log \prod_{i=1}^{n}f(\mathbf{x}_i \mid \theta)^{\alpha_i}} {2 \Delta_u}\right) \pi(\theta)
+\end{equation}
+
+- This Pseudo Posterior Mechanism achieves an $\epsilon = 2\Delta^{\alpha}-$differential privacy guanratee for each posterior draw of $\theta$
+
+## Example: estimating Poisson-distributed data cont'd
+
+```{r pressure, echo=FALSE, fig.cap="Violin plots of mu", out.width = '45%'}
+knitr::include_graphics("mu50_mu_violin.pdf")
+```
+
+## References
+
+- Dimitrakakis, C. and Nelson, B. and Zhang, Z. and Mitrokotsa, A. and Rubinstein, B. I. P. (2017). Differential privacy for Bayesian inference through posterior sampling. Journal of Machine Learning Research, 18(1), 343-381.
+
+- Dwork, C. and McSherry, F. and Nissim, K. and Smith, A. (2006). Calibrating noise to sensitivity in private data analysis. Proceedings of the Third Conference on Theory of Cryptography, 265-284.
+
+- McSherry, F., and K. Talwar. (2007). Mechanism Design via Differential Privacy. Proceedings of the 48th Annual IEEE Symposium on Foundations of Computer Science, 94–103.
+
+- Nissim, K., S. Raskhodnikova, and A. Smith. (2007). Smooth Sensitivity and Sampling in Private Data Anlaysis. Proceedings of the 39th Annual ACM Symposium on Theory of Computing, 75–83.
+
+## References
+
+- Savitsky, T. D. and Williams, M. R. and Hu, J. (2019), Bayesian pseudo posterior mechanism under differential privacy, arXiv 1909.11796
+
+- Snoke, J., and A. Slavkovic. (2018). pMSE Mechanism: Differentially Private Synthetic Data with Maximal Distributional Similarity. Privacy in Statistical Databases, 138–159.
+
+- Zhang, Z., B. I. P. Rubinstein, and C. Dimitrakakis. (2016). On the Differential Privacy of Bayesian Inference. Proceedings of the 30th AAAI Conference on Artificial Intelligence, 2365–2371.
